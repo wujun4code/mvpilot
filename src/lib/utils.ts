@@ -20,7 +20,7 @@ export function parseFlowAnimation(content: string): string | null {
   return match[1].trim() || null;
 }
 
-
+export function parseQuickReplies(content: string): string[] {
   const match = content.match(/`{3}quick-replies\s*([\s\S]*?)`{3}/);
   if (!match) return [];
   try {

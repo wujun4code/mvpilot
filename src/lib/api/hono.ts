@@ -106,6 +106,26 @@ app.post('/chat', async (c) => {
           }
         }
 
+        // Fallback: if AI didn't include quick-replies block, append generic ones
+        const hasQuickReplies = /`{3}quick-replies[\s\S]*?`{3}/.test(fullContent);
+        const isContactAsk = /联系方式|contact info|email|wechat/i.test(fullContent);
+        const isPlan = parseMvpPlan(fullContent) !== null;
+
+        if (!hasQuickReplies && !isContactAsk) {
+          const fallback = locale === 'zh'
+            ? isPlan
+              ? ['就这样，开始吧！', '我想调整一下', '重新开始']
+              : ['是的，就是这样', '不完全是，让我补充', '换个方向']
+            : isPlan
+              ? ["Looks good, let's go!", 'I want to adjust something', 'Start over']
+              : ['Yes, exactly', 'Not quite, let me clarify', 'Different direction'];
+          const appendBlock = `\n\`\`\`quick-replies\n${JSON.stringify(fallback)}\n\`\`\``;
+          fullContent += appendBlock;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: '' })}
+
+`));
+        }
+
         // Save assistant message
         await db.insert(messages).values({
           id: assistantMsgId,
