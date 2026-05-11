@@ -143,7 +143,7 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     {#each t[lang].quotes as q}
       <div class="bg-[#13131a] border border-white/5 rounded-xl p-5">
-        <p class="text-sm italic text-white/80 before:content-['"'] before:text-[#7c6cfa] before:text-2xl before:leading-none">{q}</p>
+        <p class="text-sm italic text-white/80">&ldquo;{q}</p>
       </div>
     {/each}
   </div>
