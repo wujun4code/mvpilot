@@ -32,10 +32,20 @@ app.get('/session/:id', async (c) => {
   return c.json({ session, messages: msgs });
 });
 
+// ── GET /api/models ───────────────────────────────────────────
+app.get('/models', async (c) => {
+  const models = await db
+    .select({ id: aiModels.id, name: aiModels.name, isDefault: aiModels.isDefault })
+    .from(aiModels)
+    .where(eq(aiModels.enabled, true))
+    .orderBy(asc(aiModels.sortOrder));
+  return c.json(models);
+});
+
 // ── POST /api/chat ──────────────────────────────────────────────
 // Streaming AI chat — returns SSE stream
 app.post('/chat', async (c) => {
-  const { sessionId, content } = await c.req.json();
+  const { sessionId, content, modelId } = await c.req.json();
 
   if (!sessionId || !content) {
     return c.json({ error: 'sessionId and content required' }, 400);
@@ -61,7 +71,7 @@ app.post('/chat', async (c) => {
     .where(eq(messages.sessionId, sessionId))
     .orderBy(asc(messages.createdAt));
 
-  const { client, model } = await getAIClient();
+  const { client, model } = await getAIClient(modelId);
   const locale = (session.locale as 'en' | 'zh') ?? 'en';
 
   const chatMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
