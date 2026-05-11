@@ -315,7 +315,7 @@
   </header>
 
   <!-- Messages -->
-  <div bind:this={scrollEl} class="flex-1 overflow-y-auto px-4 py-5">
+  <div bind:this={scrollEl} class="flex-1 overflow-y-auto px-4 py-5 pb-4">
     <div class="max-w-2xl mx-auto space-y-4">
 
       {#each messages as msg, idx}
@@ -504,6 +504,9 @@
           </div>
         </div>
       {/if}
+
+      <!-- Bottom spacer so last message isn't hidden behind input bar -->
+      <div class="h-4"></div>
 
     </div>
   </div>
