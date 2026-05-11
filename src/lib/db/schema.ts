@@ -27,7 +27,11 @@ export const sessions = sqliteTable('sessions', {
   demoStatus: text('demo_status'),   // null | 'generating' | 'ready' | 'failed'
   demoHtml: text('demo_html'),
   prdMarkdown: text('prd_markdown'),
-  productType: text('product_type'),  // saas | mobile | wechat | marketplace | ai_tool
+  productType: text('product_type'),
+  savedAt: text('saved_at'),
+  shareSlug: text('share_slug'),     // short random slug for public share URL
+  storyStatus: text('story_status'), // null | 'generating' | 'ready' | 'failed'
+  storyHtml: text('story_html'),
   locale: text('locale').notNull().default('en'),
 });
 

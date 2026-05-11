@@ -99,6 +99,15 @@
       messages = [{ role: 'assistant', content: opening, quickReplies: qr, flowKey: null }];
     }
 
+    // Check if demo already saved/generated
+    const summaryRes = await fetch(`/api/session/${sessionId}/summary`);
+    if (summaryRes.ok) {
+      const s = await summaryRes.json();
+      if (s.savedAt) savedDemo = { savedAt: s.savedAt, storyStatus: s.storyStatus };
+      if (s.demoStatus === 'ready' || s.demoStatus === 'generating') demoStatus = s.demoStatus;
+      if (s.demoStatus === 'generating') demoPollTimer = setInterval(pollDemoStatus, 3000);
+    }
+
     await scrollToBottom();
     inputEl?.focus();
   });
@@ -205,6 +214,7 @@
 
   let demoStatus = $state<string | null>(null);
   let demoPollTimer: ReturnType<typeof setInterval>;
+  let savedDemo = $state<{ savedAt: string; storyStatus: string | null } | null>(null);
 
   async function pollDemoStatus() {
     const res = await fetch(`/api/demo/${sessionId}/status`);
@@ -264,7 +274,19 @@
   <!-- Header -->
   <header class="shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a0f]/90 backdrop-blur z-20">
     <a href="/" class="font-extrabold text-base tracking-tight no-underline text-white">MVP<span class="text-[#7c6cfa]">ilot</span></a>
-    <div class="relative">
+    <div class="flex items-center gap-2">
+      {#if savedDemo}
+        <a href="/demo/{sessionId}" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.05)] text-[#4ade80] text-xs font-medium no-underline transition-all hover:bg-[rgba(74,222,128,0.12)]">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#4ade80]"></span>
+          {locale === 'zh' ? '查看 Demo' : 'Demo'}
+        </a>
+        {#if savedDemo.storyStatus === 'ready'}
+          <a href="/story/{sessionId}" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[rgba(124,108,250,0.3)] bg-[rgba(124,108,250,0.05)] text-[#7c6cfa] text-xs font-medium no-underline transition-all hover:bg-[rgba(124,108,250,0.12)]">
+            📊 Pitch
+          </a>
+        {/if}
+      {/if}
+      <div class="relative">
       <button
         onclick={() => showModelPicker = !showModelPicker}
         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-[#13131a] hover:bg-[#1a1a28] transition-colors text-xs font-medium text-white/60 hover:text-white"
@@ -288,6 +310,7 @@
           {/each}
         </div>
       {/if}
+      </div>
     </div>
   </header>
 

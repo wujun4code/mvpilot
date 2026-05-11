@@ -6,6 +6,7 @@ import { getAIClient } from '$lib/ai/client';
 import { getSystemPrompt } from '$lib/ai/prompts';
 import { generateId, parseMvpPlan } from '$lib/utils';
 import { generateDemo, iterateDemo } from '$lib/ai/demo-gen';
+import { generateStory } from '$lib/ai/story-gen';
 import type { RequestHandler } from '@sveltejs/kit';
 
 const app = new Hono().basePath('/api');
@@ -275,6 +276,70 @@ app.post('/demo/:sessionId/iterate', async (c) => {
   );
 
   return c.json({ ok: true });
+});
+
+// ── POST /api/save-demo ──────────────────────────────────────────
+app.post('/save-demo', async (c) => {
+  const { sessionId } = await c.req.json();
+  if (!sessionId) return c.json({ error: 'sessionId required' }, 400);
+
+  const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (!session?.demoHtml) return c.json({ error: 'No demo to save' }, 404);
+
+  const slug = session.shareSlug ?? nanoid(8);
+  await db.update(sessions).set({
+    savedAt: new Date().toISOString(),
+    shareSlug: slug,
+  }).where(eq(sessions.id, sessionId));
+
+  // Kick off story generation
+  setImmediate(() => {
+    generateStory(sessionId).catch((e) => console.error('[story-gen] error:', e));
+  });
+
+  return c.json({ ok: true, slug });
+});
+
+// ── GET /api/story/:sessionId/status ───────────────────────────
+app.get('/story/:sessionId/status', async (c) => {
+  const sessionId = c.req.param('sessionId');
+  const [session] = await db
+    .select({ storyStatus: sessions.storyStatus, savedAt: sessions.savedAt })
+    .from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (!session) return c.json({ error: 'Not found' }, 404);
+  return c.json({ status: session.storyStatus, savedAt: session.savedAt });
+});
+
+// ── GET /api/story/:sessionId/html ────────────────────────────
+app.get('/story/:sessionId/html', async (c) => {
+  const sessionId = c.req.param('sessionId');
+  const [session] = await db
+    .select({ storyHtml: sessions.storyHtml, storyStatus: sessions.storyStatus })
+    .from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (!session) return c.json({ error: 'Not found' }, 404);
+  if (session.storyStatus !== 'ready' || !session.storyHtml) {
+    return c.json({ error: 'Story not ready' }, 404);
+  }
+  return new Response(session.storyHtml, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
+});
+
+// ── GET /api/session/:id/summary ──────────────────────────────
+// Returns saved demo/story status for chat page
+app.get('/session/:id/summary', async (c) => {
+  const id = c.req.param('id');
+  const [s] = await db
+    .select({
+      demoStatus: sessions.demoStatus,
+      storyStatus: sessions.storyStatus,
+      savedAt: sessions.savedAt,
+      shareSlug: sessions.shareSlug,
+      productType: sessions.productType,
+    })
+    .from(sessions).where(eq(sessions.id, id)).limit(1);
+  if (!s) return c.json({ error: 'Not found' }, 404);
+  return c.json(s);
 });
 
 // ── Admin: GET /api/admin/models ────────────────────────────────

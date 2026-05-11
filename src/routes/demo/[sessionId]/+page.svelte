@@ -23,7 +23,34 @@
     checkStatus();
     pollTimer = setInterval(checkStatus, 3000);
   });
-  onDestroy(() => clearInterval(pollTimer));
+  let demoSaved = $state(false);
+  let shareUrl = $state('');
+  let storyStatus = $state<string | null>(null);
+  let storyPollTimer: ReturnType<typeof setInterval>;
+
+  async function saveDemo() {
+    const res = await fetch('/api/save-demo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    const data = await res.json();
+    demoSaved = true;
+    shareUrl = `${window.location.origin}/demo/${sessionId}`;
+    storyStatus = 'generating';
+    storyPollTimer = setInterval(async () => {
+      const r = await fetch(`/api/story/${sessionId}/status`);
+      const d = await r.json();
+      storyStatus = d.status;
+      if (storyStatus === 'ready' || storyStatus === 'failed') clearInterval(storyPollTimer);
+    }, 4000);
+  }
+
+  function copyShareUrl() {
+    navigator.clipboard?.writeText(shareUrl);
+  }
+
+  onDestroy(() => { clearInterval(pollTimer); clearInterval(storyPollTimer); });
 
   async function checkStatus() {
     const res = await fetch(`/api/demo/${sessionId}/status`);
@@ -182,6 +209,60 @@
         <div class="w-full max-w-2xl space-y-3">
 
           {#if !contactSubmitted}
+            <!-- Save + Share bar -->
+            {#if !demoSaved}
+              <div class="bg-[#13131a] border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-semibold">{locale === 'zh' ? '喜欢这个 Demo？' : 'Like this demo?'}</p>
+                  <p class="text-xs text-[#888899] mt-0.5">{locale === 'zh' ? '保存后可生成 Pitch Story PPT' : 'Save to generate a Pitch Story'}</p>
+                </div>
+                <button onclick={saveDemo}
+                  class="px-4 py-2 bg-[#7c6cfa] hover:bg-[#6a5ae8] text-white text-sm font-semibold rounded-xl cursor-pointer shrink-0 transition-all">
+                  {locale === 'zh' ? '💾 保存' : '💾 Save'}
+                </button>
+              </div>
+            {:else}
+              <!-- Saved state -->
+              <div class="bg-[#13131a] border border-[rgba(74,222,128,0.2)] rounded-xl px-4 py-3 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[#4ade80]">✓</span>
+                    <span class="text-sm font-semibold">{locale === 'zh' ? 'Demo 已保存' : 'Demo saved'}</span>
+                  </div>
+                  <button onclick={copyShareUrl}
+                    class="flex items-center gap-1.5 px-3 py-1.5 border border-white/10 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
+                    🔗 {locale === 'zh' ? '复制分享链接' : 'Copy link'}
+                  </button>
+                </div>
+
+                <!-- Story generation status -->
+                {#if storyStatus === 'generating'}
+                  <div class="flex items-center gap-3 bg-[#7c6cfa]/10 border border-[#7c6cfa]/20 rounded-xl px-4 py-3">
+                    <div class="flex gap-1">
+                      {#each [0,150,300] as d}
+                        <span class="w-1.5 h-1.5 bg-[#7c6cfa] rounded-full animate-bounce" style="animation-delay:{d}ms"></span>
+                      {/each}
+                    </div>
+                    <div>
+                      <p class="text-sm text-[#7c6cfa] font-semibold">{locale === 'zh' ? '正在生成 Pitch Story…' : 'Generating Pitch Story…'}</p>
+                      <p class="text-xs text-[#7c6cfa]/60 mt-0.5">{locale === 'zh' ? 'AI 正在制作你的投资人演示文稿' : 'AI is building your investor presentation'}</p>
+                    </div>
+                  </div>
+                {:else if storyStatus === 'ready'}
+                  <a href="/story/{sessionId}" target="_blank"
+                    class="flex items-center justify-between bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90 rounded-xl px-4 py-3.5 no-underline transition-opacity">
+                    <div>
+                      <p class="text-white font-bold text-sm">{locale === 'zh' ? '📊 查看 Pitch Story' : '📊 View Pitch Story'}</p>
+                      <p class="text-white/70 text-xs mt-0.5">{locale === 'zh' ? '投资人/团队沟通演示文稿' : 'Investor & team presentation'}</p>
+                    </div>
+                    <span class="text-white text-xl">→</span>
+                  </a>
+                {:else if storyStatus === 'failed'}
+                  <p class="text-xs text-[#ff6b6b]">{locale === 'zh' ? 'Pitch Story 生成失败，请稍后重试' : 'Story generation failed'}</p>
+                {/if}
+              </div>
+            {/if}
+
             <!-- Iterate input -->
             <div class="bg-[#13131a] border border-white/5 rounded-xl p-4">
               <p class="text-xs text-[#888899] mb-2">🛠 想调整什么？直接说</p>
