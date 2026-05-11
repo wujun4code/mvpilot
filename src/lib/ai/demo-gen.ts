@@ -167,6 +167,10 @@ export async function generateDemo(sessionId: string, modelId?: string): Promise
       .replace(/\s*```$/, '')
       .trim();
 
+    if (!cleanHtml || cleanHtml.length < 100) {
+      throw new Error('AI returned empty or invalid HTML');
+    }
+
     await db.update(sessions).set({
       demoStatus: 'ready',
       demoHtml: cleanHtml,
@@ -211,6 +215,8 @@ ${currentHtml.slice(0, 12000)}`;
       .replace(/^```\s*/i, '')
       .replace(/\s*```$/, '')
       .trim();
+
+    if (!cleanHtml || cleanHtml.length < 100) throw new Error('Empty HTML from AI');
 
     await db.update(sessions)
       .set({ demoStatus: 'ready', demoHtml: cleanHtml })
