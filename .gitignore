@@ -1,0 +1,9 @@
+.DS_Store
+node_modules/
+.env
+.env.local
+.svelte-kit/
+build/
+dist/
+.wrangler/
+*.tsbuildinfo
