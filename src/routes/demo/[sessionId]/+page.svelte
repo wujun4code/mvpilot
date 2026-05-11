@@ -151,7 +151,6 @@
               title="Demo Preview"
               class="w-full rounded-[36px] border-0 block"
               style="height:780px"
-              sandbox="allow-scripts allow-same-origin allow-forms"
             ></iframe>
           </div>
 
@@ -175,7 +174,6 @@
               title="Demo Preview"
               class="w-full border-0 block"
               style="height:640px"
-              sandbox="allow-scripts allow-same-origin allow-forms"
             ></iframe>
           </div>
         {/if}
