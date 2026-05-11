@@ -5,17 +5,23 @@ export function generateId(): string {
 }
 
 export function parseMvpPlan(content: string): object | null {
-  const match = content.match(/```mvp-plan\n([\s\S]*?)```/);
+  const match = content.match(/`{3}mvp-plan\s*([\s\S]*?)`{3}/);
   if (!match) return null;
   try {
-    return JSON.parse(match[1]);
+    return JSON.parse(match[1].trim());
   } catch {
     return null;
   }
 }
 
-export function parseQuickReplies(content: string): string[] {
-  const match = content.match(/```quick-replies\n([\s\S]*?)```/);
+export function parseFlowAnimation(content: string): string | null {
+  const match = content.match(/`{3}flow-animation\s*([\s\S]*?)`{3}/);
+  if (!match) return null;
+  return match[1].trim() || null;
+}
+
+
+  const match = content.match(/`{3}quick-replies\s*([\s\S]*?)`{3}/);
   if (!match) return [];
   try {
     const parsed = JSON.parse(match[1].trim());
@@ -27,7 +33,8 @@ export function parseQuickReplies(content: string): string[] {
 
 export function stripBlocks(content: string): string {
   return content
-    .replace(/```quick-replies[\s\S]*?```/g, '')
-    .replace(/```mvp-plan[\s\S]*?```/g, '')
+    .replace(/`{3}quick-replies[\s\S]*?`{3}/g, '')
+    .replace(/`{3}mvp-plan[\s\S]*?`{3}/g, '')
+    .replace(/`{3}flow-animation[\s\S]*?`{3}/g, '')
     .trim();
 }
