@@ -179,3 +179,44 @@ export async function generateDemo(sessionId: string, modelId?: string): Promise
     await db.update(sessions).set({ demoStatus: 'failed' }).where(eq(sessions.id, sessionId));
   }
 }
+
+// ── Iterate existing demo ─────────────────────────────────────────
+export async function iterateDemo(
+  sessionId: string,
+  instruction: string,
+  currentHtml: string
+): Promise<void> {
+  await db.update(sessions).set({ demoStatus: 'generating' }).where(eq(sessions.id, sessionId));
+  try {
+    const { client, model } = await getAIClient();
+    const prompt = `You are given an existing HTML demo and a user instruction to modify it.
+
+User instruction: ${instruction}
+
+Apply the instruction to the HTML. Return ONLY the complete modified HTML file from <!DOCTYPE html> to </html>. No explanations, no markdown fences.
+
+Current HTML:
+${currentHtml.slice(0, 12000)}`;
+
+    const resp = await client.chat.completions.create({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.5,
+      max_tokens: 6000,
+    });
+
+    const raw = resp.choices[0].message.content ?? '';
+    const cleanHtml = raw
+      .replace(/^```html\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim();
+
+    await db.update(sessions)
+      .set({ demoStatus: 'ready', demoHtml: cleanHtml })
+      .where(eq(sessions.id, sessionId));
+  } catch (err) {
+    console.error('[demo-iter] failed:', err);
+    await db.update(sessions).set({ demoStatus: 'failed' }).where(eq(sessions.id, sessionId));
+  }
+}

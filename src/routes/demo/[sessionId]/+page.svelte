@@ -8,6 +8,17 @@
   let productType = $state<string>('saas');
   let pollTimer: ReturnType<typeof setInterval>;
 
+  // Iterate
+  let iterateInput = $state('');
+  let iterating = $state(false);
+  let iterateError = $state('');
+
+  // Contact
+  let showContact = $state(false);
+  let contactEmail = $state('');
+  let contactWechat = $state('');
+  let contactSubmitted = $state(false);
+
   onMount(() => {
     checkStatus();
     pollTimer = setInterval(checkStatus, 3000);
@@ -20,9 +31,38 @@
     const data = await res.json();
     status = data.status;
     productType = data.productType ?? 'saas';
-    if (status === 'ready' || status === 'failed') {
-      clearInterval(pollTimer);
+    if (status === 'ready' || status === 'failed') clearInterval(pollTimer);
+  }
+
+  async function iterate() {
+    if (!iterateInput.trim() || iterating) return;
+    iterating = true;
+    iterateError = '';
+    try {
+      const res = await fetch(`/api/demo/${sessionId}/iterate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruction: iterateInput }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      iterateInput = '';
+      status = 'generating';
+      pollTimer = setInterval(checkStatus, 3000);
+    } catch {
+      iterateError = '生成失败，请重试';
+    } finally {
+      iterating = false;
     }
+  }
+
+  async function submitContact() {
+    if (!contactEmail && !contactWechat) return;
+    await fetch('/api/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, contactEmail, contactWechat }),
+    });
+    contactSubmitted = true;
   }
 
   const isMobile = $derived(productType === 'mobile' || productType === 'wechat');
@@ -140,21 +180,70 @@
           </div>
         {/if}
 
-        <!-- Actions -->
-        <div class="flex gap-3 flex-wrap justify-center">
-          <a href="/chat/{sessionId}" class="px-5 py-2.5 border border-white/10 bg-[#13131a] hover:bg-white/5 text-white text-sm font-semibold rounded-xl no-underline transition-all">
-            ← Back to chat
-          </a>
-          <a href="/api/demo/{sessionId}/html" target="_blank"
-            class="px-5 py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] text-white text-sm font-semibold rounded-xl no-underline transition-all">
-            Open full screen ↗
-          </a>
-        </div>
+        <!-- Iterate + Contact -->
+        <div class="w-full max-w-2xl space-y-3">
 
-        <p class="text-xs text-[#333344] text-center max-w-md">
-          This is an AI-generated prototype for illustration purposes. All data is fictional.
-          Ready to build the real thing? Go back to chat and connect with the founder.
-        </p>
+          {#if !contactSubmitted}
+            <!-- Iterate input -->
+            <div class="bg-[#13131a] border border-white/5 rounded-xl p-4">
+              <p class="text-xs text-[#888899] mb-2">🛠 想调整什么？直接说</p>
+              <div class="flex gap-2">
+                <input
+                  bind:value={iterateInput}
+                  placeholder="如：把主色换成蓝色，加一个购物车功能…"
+                  class="flex-1 bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-[#444455] focus:outline-none focus:border-[#7c6cfa]/50"
+                  onkeydown={(e) => e.key === 'Enter' && iterate()}
+                />
+                <button
+                  onclick={iterate}
+                  disabled={iterating || !iterateInput.trim()}
+                  class="px-4 py-2 bg-[#7c6cfa] hover:bg-[#6a5ae8] disabled:opacity-30 text-white text-sm font-semibold rounded-lg transition-all cursor-pointer shrink-0"
+                >
+                  {iterating ? '生成中…' : '应用'}
+                </button>
+              </div>
+              {#if iterateError}<p class="text-xs text-[#ff6b6b] mt-1">{iterateError}</p>{/if}
+            </div>
+
+            <!-- Happy CTA -->
+            {#if !showContact}
+              <button
+                onclick={() => showContact = true}
+                class="w-full py-3.5 bg-gradient-to-r from-[#7c6cfa] to-[#c084fc] hover:opacity-90 text-white font-bold rounded-xl text-sm transition-all cursor-pointer"
+              >
+                🎉 满意了，联系创始人一起落地 →
+              </button>
+            {:else}
+              <!-- Contact form -->
+              <div class="bg-[#13131a] border border-[rgba(124,108,250,0.35)] rounded-xl p-5 space-y-3">
+                <p class="font-semibold text-sm">🎉 太好了！留下联系方式</p>
+                <p class="text-xs text-[#888899]">创始人会主动联系你，一起把这个想法真正落地</p>
+                <div class="space-y-2">
+                  <input bind:value={contactEmail} type="email" placeholder="邮箱"
+                    class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#444455] focus:outline-none focus:border-[#7c6cfa]/50" />
+                  <input bind:value={contactWechat} type="text" placeholder="微信 ID"
+                    class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#444455] focus:outline-none focus:border-[#7c6cfa]/50" />
+                </div>
+                <button onclick={submitContact} disabled={!contactEmail && !contactWechat}
+                  class="w-full py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] disabled:opacity-30 text-white font-semibold rounded-xl text-sm cursor-pointer">
+                  通知创始人 →
+                </button>
+              </div>
+            {/if}
+
+          {:else}
+            <div class="bg-[#13131a] border border-[rgba(74,222,128,0.3)] rounded-xl p-5 text-center space-y-2">
+              <p class="text-[#4ade80] font-bold">🎉 搮到了！</p>
+              <p class="text-sm text-white/60">创始人已收到通知，马上联系你。</p>
+            </div>
+          {/if}
+
+          <div class="flex gap-2 justify-center">
+            <a href="/chat/{sessionId}" class="text-xs text-[#444455] hover:text-white no-underline transition-colors">← 返回对话</a>
+            <span class="text-[#333344]">·</span>
+            <a href="/api/demo/{sessionId}/html" target="_blank" class="text-xs text-[#444455] hover:text-white no-underline transition-colors">全屏打开 ↗</a>
+          </div>
+        </div>
       </div>
     {/if}
 

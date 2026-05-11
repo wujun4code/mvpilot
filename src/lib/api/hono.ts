@@ -5,7 +5,7 @@ import { eq, asc } from 'drizzle-orm';
 import { getAIClient } from '$lib/ai/client';
 import { getSystemPrompt } from '$lib/ai/prompts';
 import { generateId, parseMvpPlan } from '$lib/utils';
-import { generateDemo } from '$lib/ai/demo-gen';
+import { generateDemo, iterateDemo } from '$lib/ai/demo-gen';
 import type { RequestHandler } from '@sveltejs/kit';
 
 const app = new Hono().basePath('/api');
@@ -163,7 +163,17 @@ app.post('/chat', async (c) => {
   });
 });
 
+// ── POST /api/confirm-plan ─────────────────────────────────────
+// User confirmed the plan — kick off demo generation, no contact yet
+app.post('/confirm-plan', async (c) => {
+  const { sessionId } = await c.req.json();
+  if (!sessionId) return c.json({ error: 'sessionId required' }, 400);
+  generateDemo(sessionId).catch((e) => console.error('[demo-gen] error:', e));
+  return c.json({ ok: true });
+});
+
 // ── POST /api/confirm ───────────────────────────────────────────
+// User is happy with demo — save contact + notify founder
 app.post('/confirm', async (c) => {
   const { sessionId, contactEmail, contactWechat, contactNote } = await c.req.json();
 
@@ -181,9 +191,6 @@ app.post('/confirm', async (c) => {
       contactNote: contactNote ?? null,
     })
     .where(eq(sessions.id, sessionId));
-
-  // Kick off async demo generation (fire and forget)
-  generateDemo(sessionId).catch((e) => console.error('[demo-gen] error:', e));
 
   // Notify founder via Telegram
   const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -246,6 +253,23 @@ app.get('/demo/:sessionId/html', async (c) => {
   return new Response(session.demoHtml, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
+});
+
+// ── POST /api/demo/:sessionId/iterate ───────────────────────────
+app.post('/demo/:sessionId/iterate', async (c) => {
+  const sessionId = c.req.param('sessionId');
+  const { instruction } = await c.req.json();
+  if (!instruction) return c.json({ error: 'instruction required' }, 400);
+
+  const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (!session?.demoHtml) return c.json({ error: 'No demo to iterate' }, 404);
+
+  // Kick off async iteration
+  iterateDemo(sessionId, instruction, session.demoHtml).catch((e) =>
+    console.error('[demo-iter] error:', e)
+  );
+
+  return c.json({ ok: true });
 });
 
 // ── Admin: GET /api/admin/models ────────────────────────────────

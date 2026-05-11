@@ -31,7 +31,8 @@
   let showContactForm = $state(false);
   let contactEmail = $state('');
   let contactWechat = $state('');
-  let submitted = $state(false);
+  let confirmed = $state(false); // plan confirmed, demo generating/ready
+  let submitted = $state(false); // contact submitted
 
   let models = $state<AIModel[]>([]);
   let selectedModelId = $state<string | null>(null);
@@ -115,11 +116,19 @@
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
-    // If user confirms the plan, show contact form instead of sending to AI
+    // If user confirms the plan, trigger demo generation directly (no contact form yet)
     const hasPlan = messages.some((m) => m.role === 'assistant' && parseMvpPlan(m.content) !== null);
-    if (hasPlan && CONFIRM_PHRASES.some((p) => trimmed.toLowerCase().includes(p.toLowerCase()))) {
+    if (hasPlan && !confirmed && CONFIRM_PHRASES.some((p) => trimmed.toLowerCase().includes(p.toLowerCase()))) {
       messages = [...messages, { role: 'user', content: trimmed }];
-      showContactForm = true;
+      confirmed = true;
+      demoStatus = 'generating';
+      // Fire demo generation (no contact needed yet)
+      await fetch('/api/confirm-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      demoPollTimer = setInterval(pollDemoStatus, 3000);
       await scrollToBottom();
       return;
     }
@@ -341,9 +350,16 @@
                       <p class="text-[#7c6cfa] font-semibold">{p.firstAction}</p>
                     </div>
                   </div>
-                  {#if !showContactForm && !submitted}
+                  {#if !confirmed && !submitted}
                     <button
-                      onclick={() => { messages = [...messages, { role: 'user', content: c.confirmBtn.replace(' →','') }]; showContactForm = true; scrollToBottom(); }}
+                      onclick={async () => {
+                        messages = [...messages, { role: 'user', content: locale === 'zh' ? '就这样，开始吧！' : "Let's go!" }];
+                        confirmed = true;
+                        demoStatus = 'generating';
+                        await fetch('/api/confirm-plan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ sessionId }) });
+                        demoPollTimer = setInterval(pollDemoStatus, 3000);
+                        scrollToBottom();
+                      }}
                       class="mt-1 w-full py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] text-white font-semibold rounded-xl text-sm transition-all cursor-pointer">
                       {c.confirmBtn}
                     </button>
@@ -396,7 +412,38 @@
         </div>
       {/if}
 
-      <!-- Contact form -->
+      <!-- Demo generating / ready card (after plan confirmed) -->
+      {#if confirmed && !submitted}
+        <div class="flex justify-start">
+          <div class="bg-[#13131a] border border-[rgba(124,108,250,0.3)] rounded-2xl p-5 space-y-3 w-full max-w-sm">
+            {#if demoStatus === 'generating'}
+              <div class="flex items-center gap-3">
+                <div class="flex gap-1">
+                  {#each [0,150,300] as d}
+                    <span class="w-1.5 h-1.5 bg-[#7c6cfa] rounded-full animate-bounce" style="animation-delay:{d}ms"></span>
+                  {/each}
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-white">{locale === 'zh' ? '正在生成你的 Demo…' : 'Building your demo…'}</p>
+                  <p class="text-xs text-[#888899] mt-0.5">{locale === 'zh' ? 'AI 正在写 PRD 并开发原型，约 30–60 秒' : 'AI is writing PRD and building prototype, ~30-60s'}</p>
+                </div>
+              </div>
+            {:else if demoStatus === 'ready'}
+              <a href="/demo/{sessionId}" class="flex items-center justify-between bg-gradient-to-r from-[#7c6cfa] to-[#c084fc] rounded-xl px-4 py-3.5 no-underline hover:opacity-90 transition-opacity">
+                <div>
+                  <p class="text-white font-bold text-sm">{locale === 'zh' ? '🚀 查看你的 Demo 原型' : '🚀 View your live demo'}</p>
+                  <p class="text-white/70 text-xs mt-0.5">{locale === 'zh' ? '点击预览并进行调试迭代' : 'Preview and iterate with AI'}</p>
+                </div>
+                <span class="text-white text-xl">→</span>
+              </a>
+            {:else if demoStatus === 'failed'}
+              <p class="text-sm text-[#ff6b6b]">{locale === 'zh' ? 'Demo 生成失败，请联系创始人获取支持。' : 'Demo generation failed. Contact the founder for help.'}</p>
+            {/if}
+          </div>
+        </div>
+      {/if}
+
+      <!-- Contact form and done state -->
       {#if showContactForm && !submitted}
         <div class="flex justify-start">
           <div class="w-full max-w-sm bg-[#13131a] border border-[rgba(124,108,250,0.3)] rounded-2xl p-5 space-y-4">
@@ -427,35 +474,10 @@
       <!-- Done -->
       {#if submitted}
         <div class="flex justify-start">
-          <div class="bg-[#13131a] border border-[rgba(74,222,128,0.3)] rounded-2xl p-5 space-y-4">
-            <div>
-              <p class="text-[#4ade80] font-bold">{c.doneTitle}</p>
-              <p class="text-sm text-white/60 mt-1">{c.doneMsg}</p>
-            </div>
-
-            <!-- Demo status -->
-            {#if demoStatus === 'generating'}
-              <div class="flex items-center gap-3 bg-[#7c6cfa]/10 border border-[#7c6cfa]/20 rounded-xl px-4 py-3">
-                <div class="flex gap-1">
-                  {#each [0,150,300] as d}
-                    <span class="w-1.5 h-1.5 bg-[#7c6cfa] rounded-full animate-bounce" style="animation-delay:{d}ms"></span>
-                  {/each}
-                </div>
-                <span class="text-sm text-[#7c6cfa]">{locale === 'zh' ? '正在生成你的 Demo 原型…' : 'Building your demo prototype…'}</span>
-              </div>
-            {:else if demoStatus === 'ready'}
-              <a href="/demo/{sessionId}" class="flex items-center justify-between bg-gradient-to-r from-[#7c6cfa] to-[#c084fc] rounded-xl px-4 py-3.5 no-underline hover:opacity-90 transition-opacity">
-                <div>
-                  <p class="text-white font-bold text-sm">{locale === 'zh' ? '🚀 查看你的 Demo 原型' : '🚀 View your live demo'}</p>
-                  <p class="text-white/70 text-xs mt-0.5">{locale === 'zh' ? '点击预览你的产品交互流程' : 'Click to preview your product'}</p>
-                </div>
-                <span class="text-white text-lg">→</span>
-              </a>
-            {:else if demoStatus === 'failed'}
-              <p class="text-xs text-[#888899]">{locale === 'zh' ? 'Demo 生成失败，请联系创始人获取帮助。' : 'Demo generation failed. The founder will help manually.'}</p>
-            {/if}
-
-            <a href="/" class="inline-block text-xs text-[#444455] hover:text-white no-underline transition-colors">{c.backBtn}</a>
+          <div class="bg-[#13131a] border border-[rgba(74,222,128,0.3)] rounded-2xl p-5 space-y-2">
+            <p class="text-[#4ade80] font-bold">{c.doneTitle}</p>
+            <p class="text-sm text-white/60">{c.doneMsg}</p>
+            <a href="/" class="inline-block mt-2 text-xs text-[#444455] hover:text-white no-underline transition-colors">{c.backBtn}</a>
           </div>
         </div>
       {/if}
