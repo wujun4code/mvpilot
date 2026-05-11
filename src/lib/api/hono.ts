@@ -168,7 +168,12 @@ app.post('/chat', async (c) => {
 app.post('/confirm-plan', async (c) => {
   const { sessionId } = await c.req.json();
   if (!sessionId) return c.json({ error: 'sessionId required' }, 400);
-  generateDemo(sessionId).catch((e) => console.error('[demo-gen] error:', e));
+  // Use setImmediate to ensure response is sent before starting heavy async work
+  setImmediate(() => {
+    generateDemo(sessionId).then(() => {
+      console.log('[demo-gen] done for', sessionId);
+    }).catch((e) => console.error('[demo-gen] error:', e));
+  });
   return c.json({ ok: true });
 });
 
