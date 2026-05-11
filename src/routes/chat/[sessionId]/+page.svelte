@@ -107,9 +107,22 @@
     scrollEl?.scrollTo({ top: scrollEl.scrollHeight, behavior: 'smooth' });
   }
 
+  const CONFIRM_PHRASES = [
+    '就这样，开始吧', "looks good, let's go", 'let\'s do it', '开始吧', 'confirm', '确认'
+  ];
+
   async function sendMessage(text: string) {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
+
+    // If user confirms the plan, show contact form instead of sending to AI
+    const hasPlan = messages.some((m) => m.role === 'assistant' && parseMvpPlan(m.content) !== null);
+    if (hasPlan && CONFIRM_PHRASES.some((p) => trimmed.toLowerCase().includes(p.toLowerCase()))) {
+      messages = [...messages, { role: 'user', content: trimmed }];
+      showContactForm = true;
+      await scrollToBottom();
+      return;
+    }
     input = '';
     // Silence chips on previous last message
     messages = messages.map((m, i) =>
@@ -329,7 +342,9 @@
                     </div>
                   </div>
                   {#if !showContactForm && !submitted}
-                    <button onclick={() => { showContactForm = true; scrollToBottom(); }} class="mt-1 w-full py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] text-white font-semibold rounded-xl text-sm transition-all cursor-pointer">
+                    <button
+                      onclick={() => { messages = [...messages, { role: 'user', content: c.confirmBtn.replace(' →','') }]; showContactForm = true; scrollToBottom(); }}
+                      class="mt-1 w-full py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] text-white font-semibold rounded-xl text-sm transition-all cursor-pointer">
                       {c.confirmBtn}
                     </button>
                   {/if}
