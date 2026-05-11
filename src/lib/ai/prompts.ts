@@ -29,9 +29,7 @@ export const FLOW_TEMPLATES: Record<string, { label_en: string; label_zh: string
   <div class="fa-step" data-i="3"><div class="fa-dot" style="background:rgba(244,114,182,.15);color:#f472b6">🔄</div><div class="fa-text"><div>重复使用 → 留存</div><div class="fa-sub">Retention</div></div></div>
   <div class="fa-line"></div>
   <div class="fa-step" data-i="4"><div class="fa-dot" style="background:rgba(124,108,250,.2);color:#7c6cfa">💰</div><div class="fa-text"><div>升级付费</div><div class="fa-sub">Revenue</div></div></div>
-  <script>
-    (function(){var steps=document.querySelectorAll('.fa-step');var i=0;function next(){if(i<steps.length){steps[i].classList.add('show');i++;setTimeout(next,350)}}setTimeout(next,200)})();
-  </script>
+  
 </div>`,
   },
   mobile: {
@@ -55,9 +53,7 @@ export const FLOW_TEMPLATES: Record<string, { label_en: string; label_zh: string
   <div class="fa2-step" data-i="3"><div class="fa2-dot" style="background:rgba(244,114,182,.15);color:#f472b6">🔔</div><div class="fa2-text"><div>Push 通知召回</div><div class="fa2-sub">Re-engagement</div></div></div>
   <div class="fa2-line"></div>
   <div class="fa2-step" data-i="4"><div class="fa2-dot" style="background:rgba(124,108,250,.2);color:#7c6cfa">⭐</div><div class="fa2-text"><div>分享 / 评分 / 口碑传播</div><div class="fa2-sub">Referral</div></div></div>
-  <script>
-    (function(){var steps=document.querySelectorAll('.fa2-step');var i=0;function next(){if(i<steps.length){steps[i].classList.add('show');i++;setTimeout(next,350)}}setTimeout(next,200)})();
-  </script>
+  
 </div>`,
   },
   marketplace: {
@@ -99,9 +95,7 @@ export const FLOW_TEMPLATES: Record<string, { label_en: string; label_zh: string
       <div class="fa3-label">网络效应</div>
     </div>
   </div>
-  <script>
-    (function(){var rows=document.querySelectorAll('.fa3-row');var i=0;function next(){if(i<rows.length){rows[i].classList.add('show');i++;setTimeout(next,400)}}setTimeout(next,200)})();
-  </script>
+  
 </div>`,
   },
   ai_tool: {
@@ -124,9 +118,7 @@ export const FLOW_TEMPLATES: Record<string, { label_en: string; label_zh: string
   <div class="fa4-step" data-i="2"><div class="fa4-icon" style="background:rgba(251,191,36,.15)">✨</div><div class="fa4-body"><div class="fa4-title">输出答案 / 执行动作</div><div class="fa4-desc">Streaming / Structured Output</div></div></div>
   <div class="fa4-conn">↓ 反馈学习</div>
   <div class="fa4-step" data-i="3"><div class="fa4-icon" style="background:rgba(244,114,182,.15)">📈</div><div class="fa4-body"><div class="fa4-title">用户反馈 → 模型迭代</div><div class="fa4-desc">RLHF / Fine-tune / Prompt opt</div></div></div>
-  <script>
-    (function(){var steps=document.querySelectorAll('.fa4-step');var i=0;function next(){if(i<steps.length){steps[i].classList.add('show');i++;setTimeout(next,380)}}setTimeout(next,150)})();
-  </script>
+  
 </div>`,
   },
 };

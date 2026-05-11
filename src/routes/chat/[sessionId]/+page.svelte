@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, afterUpdate } from 'svelte';
   import type { PageData } from './$types';
   import {
     OPENING_MESSAGE_EN, OPENING_MESSAGE_ZH,
@@ -193,6 +193,20 @@
     await scrollToBottom();
   }
 
+  function animateFlow(node: HTMLElement) {
+    const steps = node.querySelectorAll<HTMLElement>('[data-i]');
+    let i = 0;
+    function next() {
+      if (i < steps.length) {
+        steps[i].classList.add('show');
+        i++;
+        setTimeout(next, 360);
+      }
+    }
+    setTimeout(next, 200);
+    return {};
+  }
+
   function renderMsg(content: string) {
     return { plain: stripBlocks(content), plan: parseMvpPlan(content) };
   }
@@ -262,7 +276,7 @@
                       {locale === 'zh' ? tpl.label_zh : tpl.label_en}
                     </span>
                   </div>
-                  <div class="px-4 pb-3">
+                  <div class="px-4 pb-3" use:animateFlow>
                     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                     {@html tpl.html}
                   </div>
