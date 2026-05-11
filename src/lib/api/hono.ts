@@ -5,6 +5,7 @@ import { eq, asc } from 'drizzle-orm';
 import { getAIClient } from '$lib/ai/client';
 import { getSystemPrompt } from '$lib/ai/prompts';
 import { generateId, parseMvpPlan } from '$lib/utils';
+import { generateDemo } from '$lib/ai/demo-gen';
 import type { RequestHandler } from '@sveltejs/kit';
 
 const app = new Hono().basePath('/api');
@@ -181,6 +182,9 @@ app.post('/confirm', async (c) => {
     })
     .where(eq(sessions.id, sessionId));
 
+  // Kick off async demo generation (fire and forget)
+  generateDemo(sessionId).catch((e) => console.error('[demo-gen] error:', e));
+
   // Notify founder via Telegram
   const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
   const telegramChatId = process.env.TELEGRAM_CHAT_ID;
@@ -213,6 +217,35 @@ app.post('/confirm', async (c) => {
   }
 
   return c.json({ ok: true });
+});
+
+// ── GET /api/demo/:sessionId/status ──────────────────────────────
+app.get('/demo/:sessionId/status', async (c) => {
+  const sessionId = c.req.param('sessionId');
+  const [session] = await db
+    .select({ demoStatus: sessions.demoStatus, productType: sessions.productType })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+  if (!session) return c.json({ error: 'Not found' }, 404);
+  return c.json({ status: session.demoStatus, productType: session.productType });
+});
+
+// ── GET /api/demo/:sessionId/html ───────────────────────────────
+app.get('/demo/:sessionId/html', async (c) => {
+  const sessionId = c.req.param('sessionId');
+  const [session] = await db
+    .select({ demoHtml: sessions.demoHtml, demoStatus: sessions.demoStatus })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+  if (!session) return c.json({ error: 'Not found' }, 404);
+  if (session.demoStatus !== 'ready' || !session.demoHtml) {
+    return c.json({ error: 'Demo not ready' }, 404);
+  }
+  return new Response(session.demoHtml, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
 });
 
 // ── Admin: GET /api/admin/models ────────────────────────────────

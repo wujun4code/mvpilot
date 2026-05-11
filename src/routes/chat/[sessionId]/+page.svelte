@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick, afterUpdate } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { PageData } from './$types';
   import {
     OPENING_MESSAGE_EN, OPENING_MESSAGE_ZH,
@@ -181,6 +181,19 @@
     el.style.height = Math.min(el.scrollHeight, 140) + 'px';
   }
 
+  let demoStatus = $state<string | null>(null);
+  let demoPollTimer: ReturnType<typeof setInterval>;
+
+  async function pollDemoStatus() {
+    const res = await fetch(`/api/demo/${sessionId}/status`);
+    if (!res.ok) return;
+    const data = await res.json();
+    demoStatus = data.status;
+    if (demoStatus === 'ready' || demoStatus === 'failed') {
+      clearInterval(demoPollTimer);
+    }
+  }
+
   async function handleSubmitContact() {
     if (!contactEmail && !contactWechat) return;
     await fetch('/api/confirm', {
@@ -190,8 +203,15 @@
     });
     submitted = true;
     showContactForm = false;
+    // Start polling for demo
+    demoStatus = 'generating';
+    demoPollTimer = setInterval(pollDemoStatus, 3000);
     await scrollToBottom();
   }
+
+  // Cleanup poll on destroy
+  import { onDestroy } from 'svelte';
+  onDestroy(() => clearInterval(demoPollTimer));
 
   function animateFlow(node: HTMLElement) {
     const steps = node.querySelectorAll<HTMLElement>('[data-i]');
@@ -392,10 +412,35 @@
       <!-- Done -->
       {#if submitted}
         <div class="flex justify-start">
-          <div class="bg-[#13131a] border border-[rgba(74,222,128,0.3)] rounded-2xl p-5 space-y-2">
-            <p class="text-[#4ade80] font-bold">{c.doneTitle}</p>
-            <p class="text-sm text-white/60">{c.doneMsg}</p>
-            <a href="/" class="inline-block mt-2 text-xs text-[#444455] hover:text-white no-underline transition-colors">{c.backBtn}</a>
+          <div class="bg-[#13131a] border border-[rgba(74,222,128,0.3)] rounded-2xl p-5 space-y-4">
+            <div>
+              <p class="text-[#4ade80] font-bold">{c.doneTitle}</p>
+              <p class="text-sm text-white/60 mt-1">{c.doneMsg}</p>
+            </div>
+
+            <!-- Demo status -->
+            {#if demoStatus === 'generating'}
+              <div class="flex items-center gap-3 bg-[#7c6cfa]/10 border border-[#7c6cfa]/20 rounded-xl px-4 py-3">
+                <div class="flex gap-1">
+                  {#each [0,150,300] as d}
+                    <span class="w-1.5 h-1.5 bg-[#7c6cfa] rounded-full animate-bounce" style="animation-delay:{d}ms"></span>
+                  {/each}
+                </div>
+                <span class="text-sm text-[#7c6cfa]">{locale === 'zh' ? '正在生成你的 Demo 原型…' : 'Building your demo prototype…'}</span>
+              </div>
+            {:else if demoStatus === 'ready'}
+              <a href="/demo/{sessionId}" class="flex items-center justify-between bg-gradient-to-r from-[#7c6cfa] to-[#c084fc] rounded-xl px-4 py-3.5 no-underline hover:opacity-90 transition-opacity">
+                <div>
+                  <p class="text-white font-bold text-sm">{locale === 'zh' ? '🚀 查看你的 Demo 原型' : '🚀 View your live demo'}</p>
+                  <p class="text-white/70 text-xs mt-0.5">{locale === 'zh' ? '点击预览你的产品交互流程' : 'Click to preview your product'}</p>
+                </div>
+                <span class="text-white text-lg">→</span>
+              </a>
+            {:else if demoStatus === 'failed'}
+              <p class="text-xs text-[#888899]">{locale === 'zh' ? 'Demo 生成失败，请联系创始人获取帮助。' : 'Demo generation failed. The founder will help manually.'}</p>
+            {/if}
+
+            <a href="/" class="inline-block text-xs text-[#444455] hover:text-white no-underline transition-colors">{c.backBtn}</a>
           </div>
         </div>
       {/if}

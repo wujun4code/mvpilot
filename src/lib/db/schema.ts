@@ -23,7 +23,11 @@ export const sessions = sqliteTable('sessions', {
   contactWechat: text('contact_wechat'),
   contactNote: text('contact_note'),
   notifiedAt: text('notified_at'),
-  planJson: text('plan_json'),  // final MVP plan as JSON string
+  planJson: text('plan_json'),
+  demoStatus: text('demo_status'),   // null | 'generating' | 'ready' | 'failed'
+  demoHtml: text('demo_html'),
+  prdMarkdown: text('prd_markdown'),
+  productType: text('product_type'),  // saas | mobile | wechat | marketplace | ai_tool
   locale: text('locale').notNull().default('en'),
 });
 
