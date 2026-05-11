@@ -121,7 +121,8 @@ app.post('/chat', async (c) => {
               : ['Yes, exactly', 'Not quite, let me clarify', 'Different direction'];
           const appendBlock = `\n\`\`\`quick-replies\n${JSON.stringify(fallback)}\n\`\`\``;
           fullContent += appendBlock;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: '' })}
+          // Send the appended block to client so its fullContent stays in sync
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: appendBlock })}
 
 `));
         }
