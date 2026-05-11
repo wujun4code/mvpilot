@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { page } from '$app/stores';
+  import type { PageData } from './$types';
 
-  const sessionId = $page.params.sessionId;
+  let { data }: { data: PageData } = $props();
+  const sessionId = data.sessionId;
 
-  let status = $state<'generating' | 'ready' | 'failed' | null>(null);
-  let productType = $state<string>('saas');
+  let status = $state<string | null>(data.initialStatus ?? null);
+  let productType = $state<string>(data.productType ?? 'saas');
   let pollTimer: ReturnType<typeof setInterval>;
 
   // Iterate
@@ -20,8 +21,9 @@
   let contactSubmitted = $state(false);
 
   onMount(() => {
-    checkStatus();
-    pollTimer = setInterval(checkStatus, 3000);
+    if (status !== 'ready' && status !== 'failed') {
+      pollTimer = setInterval(checkStatus, 3000);
+    }
   });
   let demoSaved = $state(false);
   let shareUrl = $state('');
