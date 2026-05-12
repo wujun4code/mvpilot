@@ -24,17 +24,26 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          # Create D1 database if it doesn't exist (idempotent)
+          # Try to create (ignore if already exists or no create permission)
           npx wrangler d1 create mvpilot 2>&1 || true
 
-          # Fetch database_id via Cloudflare REST API (avoids wrangler banner noise)
-          DB_ID=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database?name=mvpilot" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            | jq -r '.result[0].uuid // .result[0].id // empty')
+          # Use node to parse wrangler JSON output (strips banner noise reliably)
+          DB_ID=$(npx wrangler d1 list --json 2>/dev/null | node -e "
+            let d='';
+            process.stdin.on('data',c=>d+=c);
+            process.stdin.on('end',()=>{
+              const m=d.match(/\[[\s\S]*\]/);
+              if(!m){process.exit(0);}
+              try {
+                const rows=JSON.parse(m[0]);
+                const r=rows.find(r=>r.name==='mvpilot');
+                if(r) console.log(r.uuid||r.id||r.database_id||'');
+              } catch(e){}
+            });
+          ")
 
           if [ -z "$DB_ID" ]; then
-            echo "Could not determine D1 database_id"
+            echo "Could not determine D1 database_id from listing"
             exit 1
           fi
 
