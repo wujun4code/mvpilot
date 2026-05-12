@@ -1,26 +1,31 @@
 import { Hono } from 'hono';
-import { db } from '$lib/db';
+import { getDb } from '$lib/db';
 import { sessions, messages, aiModels } from '$lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { getAIClient } from '$lib/ai/client';
 import { getSystemPrompt } from '$lib/ai/prompts';
+import { nanoid } from 'nanoid';
 import { generateId, parseMvpPlan } from '$lib/utils';
 import { generateDemo, iterateDemo } from '$lib/ai/demo-gen';
 import { generateStory } from '$lib/ai/story-gen';
 import type { RequestHandler } from '@sveltejs/kit';
 
-const app = new Hono().basePath('/api');
+type Env = { DB?: D1Database; TELEGRAM_BOT_TOKEN?: string; TELEGRAM_CHAT_ID?: string; ADMIN_TOKEN?: string; PUBLIC_BASE_URL?: string };
+type Variables = Record<string, never>;
+const app = new Hono<{ Bindings: Env }>().basePath('/api');
 
 // ── POST /api/session/start ─────────────────────────────────────
 app.post('/session/start', async (c) => {
   const { locale = 'en' } = await c.req.json().catch(() => ({}));
   const id = generateId();
+  const db = getDb(c.env?.DB);
   await db.insert(sessions).values({ id, locale });
   return c.json({ sessionId: id });
 });
 
 // ── GET /api/session/:id ────────────────────────────────────────
 app.get('/session/:id', async (c) => {
+  const db = getDb(c.env?.DB);
   const id = c.req.param('id');
   const [session] = await db.select().from(sessions).where(eq(sessions.id, id)).limit(1);
   if (!session) return c.json({ error: 'Not found' }, 404);
@@ -36,6 +41,7 @@ app.get('/session/:id', async (c) => {
 
 // ── GET /api/models ───────────────────────────────────────────
 app.get('/models', async (c) => {
+  const db = getDb(c.env?.DB);
   const models = await db
     .select({ id: aiModels.id, name: aiModels.name, isDefault: aiModels.isDefault })
     .from(aiModels)
@@ -53,6 +59,7 @@ app.post('/chat', async (c) => {
     return c.json({ error: 'sessionId and content required' }, 400);
   }
 
+  const db = getDb(c.env?.DB);
   // Load session
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
   if (!session) return c.json({ error: 'Session not found' }, 404);
@@ -169,12 +176,12 @@ app.post('/chat', async (c) => {
 app.post('/confirm-plan', async (c) => {
   const { sessionId } = await c.req.json();
   if (!sessionId) return c.json({ error: 'sessionId required' }, 400);
-  // Use setImmediate to ensure response is sent before starting heavy async work
-  setImmediate(() => {
-    generateDemo(sessionId).then(() => {
-      console.log('[demo-gen] done for', sessionId);
-    }).catch((e) => console.error('[demo-gen] error:', e));
-  });
+  const d1 = c.env?.DB;
+  c.executionCtx.waitUntil(
+    generateDemo(sessionId, undefined, d1)
+      .then(() => console.log('[demo-gen] done for', sessionId))
+      .catch((e) => console.error('[demo-gen] error:', e))
+  );
   return c.json({ ok: true });
 });
 
@@ -184,6 +191,7 @@ app.post('/confirm', async (c) => {
   const { sessionId, contactEmail, contactWechat, contactNote } = await c.req.json();
 
   if (!sessionId) return c.json({ error: 'sessionId required' }, 400);
+  const db = getDb(c.env?.DB);
 
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
   if (!session) return c.json({ error: 'Session not found' }, 404);
@@ -199,20 +207,30 @@ app.post('/confirm', async (c) => {
     .where(eq(sessions.id, sessionId));
 
   // Notify founder via Telegram
-  const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
-  const telegramChatId = process.env.TELEGRAM_CHAT_ID;
+  const telegramToken = c.env?.TELEGRAM_BOT_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN;
+  const telegramChatId = c.env?.TELEGRAM_CHAT_ID ?? process.env.TELEGRAM_CHAT_ID;
 
   if (telegramToken && telegramChatId) {
     const plan = session.planJson ? JSON.parse(session.planJson) : null;
+    const base = (process.env.PUBLIC_BASE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+    const chatUrl  = `${base}/chat/${sessionId}`;
+    const demoUrl  = `${base}/demo/${sessionId}`;
+    const storyUrl = `${base}/story/${sessionId}`;
     const text = [
       '🚀 *New MVPilot Lead*',
       '',
       plan ? `💡 *Idea:* ${plan.problem}` : '',
-      contactEmail ? `📧 Email: ${contactEmail}` : '',
-      contactWechat ? `💬 WeChat: ${contactWechat}` : '',
-      contactNote ? `📝 Note: ${contactNote}` : '',
+      plan?.user ? `👤 *Target:* ${plan.user}` : '',
       '',
-      `🔗 Session: \`${sessionId}\``,
+      contactEmail  ? `📧 Email: ${contactEmail}`   : '',
+      contactWechat ? `💬 WeChat: ${contactWechat}` : '',
+      contactNote   ? `📝 Note: ${contactNote}`     : '',
+      '',
+      `🗨️ Chat: ${chatUrl}`,
+      session.demoStatus === 'ready'  ? `🖥️ Demo: ${demoUrl}`   : '',
+      session.storyStatus === 'ready' ? `📊 Story: ${storyUrl}` : '',
+      '',
+      `🆔 Session: \`${sessionId}\``,
     ]
       .filter(Boolean)
       .join('\n');
@@ -235,18 +253,20 @@ app.post('/confirm', async (c) => {
 // ── GET /api/demo/:sessionId/status ──────────────────────────────
 app.get('/demo/:sessionId/status', async (c) => {
   const sessionId = c.req.param('sessionId');
+  const db = getDb(c.env?.DB);
   const [session] = await db
-    .select({ demoStatus: sessions.demoStatus, productType: sessions.productType })
+    .select({ demoStatus: sessions.demoStatus, productType: sessions.productType, locale: sessions.locale })
     .from(sessions)
     .where(eq(sessions.id, sessionId))
     .limit(1);
   if (!session) return c.json({ error: 'Not found' }, 404);
-  return c.json({ status: session.demoStatus, productType: session.productType });
+  return c.json({ status: session.demoStatus, productType: session.productType, locale: session.locale });
 });
 
 // ── GET /api/demo/:sessionId/html ───────────────────────────────
 app.get('/demo/:sessionId/html', async (c) => {
   const sessionId = c.req.param('sessionId');
+  const db = getDb(c.env?.DB);
   const [session] = await db
     .select({ demoHtml: sessions.demoHtml, demoStatus: sessions.demoStatus })
     .from(sessions)
@@ -266,13 +286,14 @@ app.post('/demo/:sessionId/iterate', async (c) => {
   const sessionId = c.req.param('sessionId');
   const { instruction } = await c.req.json();
   if (!instruction) return c.json({ error: 'instruction required' }, 400);
+  const db = getDb(c.env?.DB);
 
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
   if (!session?.demoHtml) return c.json({ error: 'No demo to iterate' }, 404);
 
   // Kick off async iteration
-  iterateDemo(sessionId, instruction, session.demoHtml).catch((e) =>
-    console.error('[demo-iter] error:', e)
+  c.executionCtx.waitUntil(
+    iterateDemo(sessionId, instruction, session.demoHtml, c.env?.DB).catch((e) => console.error('[demo-iter] error:', e))
   );
 
   return c.json({ ok: true });
@@ -282,6 +303,7 @@ app.post('/demo/:sessionId/iterate', async (c) => {
 app.post('/save-demo', async (c) => {
   const { sessionId } = await c.req.json();
   if (!sessionId) return c.json({ error: 'sessionId required' }, 400);
+  const db = getDb(c.env?.DB);
 
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
   if (!session?.demoHtml) return c.json({ error: 'No demo to save' }, 404);
@@ -293,9 +315,9 @@ app.post('/save-demo', async (c) => {
   }).where(eq(sessions.id, sessionId));
 
   // Kick off story generation
-  setImmediate(() => {
-    generateStory(sessionId).catch((e) => console.error('[story-gen] error:', e));
-  });
+  c.executionCtx.waitUntil(
+    generateStory(sessionId, c.env?.DB).catch((e) => console.error('[story-gen] error:', e))
+  );
 
   return c.json({ ok: true, slug });
 });
@@ -303,6 +325,7 @@ app.post('/save-demo', async (c) => {
 // ── GET /api/story/:sessionId/status ───────────────────────────
 app.get('/story/:sessionId/status', async (c) => {
   const sessionId = c.req.param('sessionId');
+  const db = getDb(c.env?.DB);
   const [session] = await db
     .select({ storyStatus: sessions.storyStatus, savedAt: sessions.savedAt })
     .from(sessions).where(eq(sessions.id, sessionId)).limit(1);
@@ -313,6 +336,7 @@ app.get('/story/:sessionId/status', async (c) => {
 // ── GET /api/story/:sessionId/html ────────────────────────────
 app.get('/story/:sessionId/html', async (c) => {
   const sessionId = c.req.param('sessionId');
+  const db = getDb(c.env?.DB);
   const [session] = await db
     .select({ storyHtml: sessions.storyHtml, storyStatus: sessions.storyStatus })
     .from(sessions).where(eq(sessions.id, sessionId)).limit(1);
@@ -328,6 +352,7 @@ app.get('/story/:sessionId/html', async (c) => {
 // ── GET /api/session/:id/summary ──────────────────────────────
 // Returns saved demo/story status for chat page
 app.get('/session/:id/summary', async (c) => {
+  const db = getDb(c.env?.DB);
   const id = c.req.param('id');
   const [s] = await db
     .select({
@@ -345,7 +370,8 @@ app.get('/session/:id/summary', async (c) => {
 // ── Admin: GET /api/admin/models ────────────────────────────────
 app.get('/admin/models', async (c) => {
   const token = c.req.header('x-admin-token');
-  if (token !== process.env.ADMIN_TOKEN) return c.json({ error: 'Unauthorized' }, 401);
+  if (token !== (c.env?.ADMIN_TOKEN ?? process.env.ADMIN_TOKEN)) return c.json({ error: 'Unauthorized' }, 401);
+  const db = getDb(c.env?.DB);
   const models = await db.select().from(aiModels).orderBy(asc(aiModels.sortOrder));
   return c.json(models);
 });
@@ -353,7 +379,8 @@ app.get('/admin/models', async (c) => {
 // ── Admin: POST /api/admin/models ───────────────────────────────
 app.post('/admin/models', async (c) => {
   const token = c.req.header('x-admin-token');
-  if (token !== process.env.ADMIN_TOKEN) return c.json({ error: 'Unauthorized' }, 401);
+  if (token !== (c.env?.ADMIN_TOKEN ?? process.env.ADMIN_TOKEN)) return c.json({ error: 'Unauthorized' }, 401);
+  const db = getDb(c.env?.DB);
 
   const body = await c.req.json();
   const id = generateId();
@@ -364,7 +391,8 @@ app.post('/admin/models', async (c) => {
 // ── Admin: PUT /api/admin/models/:id ────────────────────────────
 app.put('/admin/models/:id', async (c) => {
   const token = c.req.header('x-admin-token');
-  if (token !== process.env.ADMIN_TOKEN) return c.json({ error: 'Unauthorized' }, 401);
+  if (token !== (c.env?.ADMIN_TOKEN ?? process.env.ADMIN_TOKEN)) return c.json({ error: 'Unauthorized' }, 401);
+  const db = getDb(c.env?.DB);
 
   const id = c.req.param('id');
   const body = await c.req.json();
@@ -375,13 +403,16 @@ app.put('/admin/models/:id', async (c) => {
 // ── Admin: DELETE /api/admin/models/:id ─────────────────────────
 app.delete('/admin/models/:id', async (c) => {
   const token = c.req.header('x-admin-token');
-  if (token !== process.env.ADMIN_TOKEN) return c.json({ error: 'Unauthorized' }, 401);
+  if (token !== (c.env?.ADMIN_TOKEN ?? process.env.ADMIN_TOKEN)) return c.json({ error: 'Unauthorized' }, 401);
+  const db = getDb(c.env?.DB);
 
   const id = c.req.param('id');
   await db.delete(aiModels).where(eq(aiModels.id, id));
   return c.json({ ok: true });
 });
 
-export const honoHandler: RequestHandler = async ({ request }) => {
-  return app.fetch(request);
+export const honoHandler: RequestHandler = async ({ request, platform }) => {
+  const env = (platform as any)?.env ?? {};
+  const ctx = (platform as any)?.context ?? { waitUntil: (p: Promise<unknown>) => p };
+  return app.fetch(request, env, ctx);
 };

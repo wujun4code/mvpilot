@@ -226,6 +226,10 @@
     }
   }
 
+  function openDemo() {
+    window.location.assign(`/demo/${sessionId}`);
+  }
+
   async function handleSubmitContact() {
     if (!contactEmail && !contactWechat) return;
     await fetch('/api/confirm', {
@@ -452,13 +456,17 @@
                 </div>
               </div>
             {:else if demoStatus === 'ready'}
-              <a href="/demo/{sessionId}" class="flex items-center justify-between bg-gradient-to-r from-[#7c6cfa] to-[#c084fc] rounded-xl px-4 py-3.5 no-underline hover:opacity-90 transition-opacity">
+              <button
+                type="button"
+                onclick={openDemo}
+                class="relative z-10 w-full flex items-center justify-between bg-gradient-to-r from-[#7c6cfa] to-[#c084fc] rounded-xl px-4 py-3.5 text-left no-underline hover:opacity-90 active:scale-[0.99] transition-all cursor-pointer"
+              >
                 <div>
                   <p class="text-white font-bold text-sm">{locale === 'zh' ? '🚀 查看你的 Demo 原型' : '🚀 View your live demo'}</p>
                   <p class="text-white/70 text-xs mt-0.5">{locale === 'zh' ? '点击预览并进行调试迭代' : 'Preview and iterate with AI'}</p>
                 </div>
                 <span class="text-white text-xl">→</span>
-              </a>
+              </button>
             {:else if demoStatus === 'failed'}
               <p class="text-sm text-[#ff6b6b]">{locale === 'zh' ? 'Demo 生成失败，请联系创始人获取支持。' : 'Demo generation failed. Contact the founder for help.'}</p>
             {/if}

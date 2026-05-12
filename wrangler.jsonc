@@ -1,0 +1,22 @@
+{
+  // Cloudflare Workers configuration
+  // database_id is filled automatically by the bootstrap workflow
+  "name": "mvpilot",
+  "compatibility_date": "2025-05-12",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mvpilot",
+      "database_id": "PLACEHOLDER_DATABASE_ID"
+    }
+  ],
+
+  "routes": [
+    {
+      "pattern": "mvpilot.aipromptor.com/*",
+      "custom_domain": true
+    }
+  ]
+}

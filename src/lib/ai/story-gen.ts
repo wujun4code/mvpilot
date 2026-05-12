@@ -1,4 +1,4 @@
-import { db } from '$lib/db';
+import { getDb } from '$lib/db';
 import { sessions } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAIClient } from '$lib/ai/client';
@@ -18,9 +18,9 @@ interface Storyboard {
   scenes: Scene[];
 }
 
-async function generateStoryboard(plan: any, locale: string): Promise<Storyboard> {
+async function generateStoryboard(plan: any, locale: string, d1?: D1Database): Promise<Storyboard> {
   const isZh = locale === 'zh';
-  const { client, model } = await getAIClient();
+  const { client, model } = await getAIClient(undefined, d1);
 
   const prompt = isZh ? `
 基于以下 MVP 方案，生成一份投资人/团队沟通用的 Pitch Story 大纲（JSON 格式）。
@@ -85,8 +85,8 @@ Duration 4-8s each. Output JSON only.`;
   return JSON.parse(clean) as Storyboard;
 }
 
-async function generateStoryHTML(storyboard: Storyboard, plan: any, locale: string): Promise<string> {
-  const { client, model } = await getAIClient();
+async function generateStoryHTML(storyboard: Storyboard, plan: any, locale: string, d1?: D1Database): Promise<string> {
+  const { client, model } = await getAIClient(undefined, d1);
   const isZh = locale === 'zh';
 
   const scenesJson = JSON.stringify(storyboard.scenes, null, 2);
@@ -135,7 +135,8 @@ ${scenesJson}
     .trim();
 }
 
-export async function generateStory(sessionId: string): Promise<void> {
+export async function generateStory(sessionId: string, d1?: D1Database): Promise<void> {
+  const db = getDb(d1);
   await db.update(sessions).set({ storyStatus: 'generating' }).where(eq(sessions.id, sessionId));
 
   try {
@@ -147,10 +148,10 @@ export async function generateStory(sessionId: string): Promise<void> {
 
     console.log(`[story-gen] start sessionId=${sessionId}`);
 
-    const storyboard = await generateStoryboard(plan, locale);
+    const storyboard = await generateStoryboard(plan, locale, d1);
     console.log(`[story-gen] storyboard ready: ${storyboard.scenes.length} scenes`);
 
-    const html = await generateStoryHTML(storyboard, plan, locale);
+    const html = await generateStoryHTML(storyboard, plan, locale, d1);
 
     if (!html || html.length < 500 || !html.includes('<!DOCTYPE')) {
       throw new Error(`Invalid story HTML (length=${html.length})`);

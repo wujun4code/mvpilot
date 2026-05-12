@@ -4,6 +4,7 @@
 
   let { data }: { data: PageData } = $props();
   const sessionId = data.sessionId;
+  const locale = (data.locale ?? 'en') as 'en' | 'zh';
 
   let status = $state<string | null>(data.initialStatus ?? null);
   let productType = $state<string>(data.productType ?? 'saas');

@@ -1,9 +1,10 @@
 import OpenAI from 'openai';
-import { db } from '$lib/db';
+import { getDb } from '$lib/db';
 import { aiModels } from '$lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
-export async function getAIClient(modelId?: string): Promise<{ client: OpenAI; model: string }> {
+export async function getAIClient(modelId?: string, d1?: D1Database): Promise<{ client: OpenAI; model: string }> {
+  const db = getDb(d1);
   let row = null;
 
   if (modelId) {

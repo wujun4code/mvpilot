@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { db } from '$lib/db';
+import { getDb } from '$lib/db';
 import { sessions } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAIClient } from '$lib/ai/client';
@@ -66,7 +66,8 @@ async function buildHtml(plan: any, productType: string, locale: string, client:
 }
 
 // ── Main entry ───────────────────────────────────────────────────
-export async function generateDemo(sessionId: string, modelId?: string): Promise<void> {
+export async function generateDemo(sessionId: string, modelId?: string, d1?: D1Database): Promise<void> {
+  const db = getDb(d1);
   await db.update(sessions).set({ demoStatus: 'generating' }).where(eq(sessions.id, sessionId));
 
   try {
@@ -77,7 +78,7 @@ export async function generateDemo(sessionId: string, modelId?: string): Promise
     const productType = detectProductType(plan);
     const locale = session.locale as 'en' | 'zh';
 
-    const { client, model } = await getAIClient(modelId);
+    const { client, model } = await getAIClient(modelId, d1);
     console.log(`[demo-gen] start sessionId=${sessionId} model=${model}`);
 
     const html = await buildHtml(plan, productType, locale, client, model);
@@ -101,10 +102,11 @@ export async function generateDemo(sessionId: string, modelId?: string): Promise
 }
 
 // ── Iterate existing demo ────────────────────────────────────────
-export async function iterateDemo(sessionId: string, instruction: string, currentHtml: string): Promise<void> {
+export async function iterateDemo(sessionId: string, instruction: string, currentHtml: string, d1?: D1Database): Promise<void> {
+  const db = getDb(d1);
   await db.update(sessions).set({ demoStatus: 'generating' }).where(eq(sessions.id, sessionId));
   try {
-    const { client, model } = await getAIClient();
+    const { client, model } = await getAIClient(undefined, d1);
     console.log(`[demo-iter] start sessionId=${sessionId}`);
 
     const prompt = `修改以下HTML Demo，执行用户指令：${instruction}
