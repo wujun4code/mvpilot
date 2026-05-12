@@ -3,7 +3,7 @@
   // database_id is filled automatically by the bootstrap workflow
   "name": "mvpilot",
   "main": ".svelte-kit/cloudflare/_worker.js",
-  "assets": { "directory": ".svelte-kit/cloudflare" },
+  "assets": { "directory": ".svelte-kit/cloudflare", "binding": "ASSETS" },
   "compatibility_date": "2025-05-12",
   "compatibility_flags": ["nodejs_compat"],
 
