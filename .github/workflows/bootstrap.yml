@@ -26,14 +26,22 @@ jobs:
           # Try to create (ignore error if already exists)
           wrangler d1 create mvpilot 2>&1 || true
 
-          # Reliably fetch the database_id via list
-          DB_ID=$(wrangler d1 list --json 2>/dev/null \
-            | python3 -c "
-import sys, json
-rows = json.load(sys.stdin)
+          # Reliably fetch the database_id via list --json
+          # wrangler may emit banner/telemetry lines before the JSON array;
+          # extract only lines that look like a JSON array.
+          RAW=$(wrangler d1 list --json 2>/dev/null)
+          DB_ID=$(echo "$RAW" | python3 -c "
+import sys, json, re
+text = sys.stdin.read()
+# find the first '[' ... ']' block in case of banner noise
+m = re.search(r'\\[.*\\]', text, re.DOTALL)
+if not m:
+    sys.exit(0)
+rows = json.loads(m.group(0))
 for r in rows:
-    if r.get('name') == 'mvpilot':
-        print(r.get('uuid') or r.get('id') or r.get('database_id',''))
+    v = r.get('uuid') or r.get('id') or r.get('database_id') or ''
+    if r.get('name') == 'mvpilot' and v:
+        print(v)
         break
 " | head -1)
 
