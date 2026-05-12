@@ -6,11 +6,16 @@ import { getAIClient } from '$lib/ai/client';
 import { getSystemPrompt } from '$lib/ai/prompts';
 import { nanoid } from 'nanoid';
 import { generateId, parseMvpPlan } from '$lib/utils';
-import { generateDemo, iterateDemo } from '$lib/ai/demo-gen';
-import { generateStory } from '$lib/ai/story-gen';
 import type { RequestHandler } from '@sveltejs/kit';
 
-type Env = { DB?: D1Database; TELEGRAM_BOT_TOKEN?: string; TELEGRAM_CHAT_ID?: string; ADMIN_TOKEN?: string; PUBLIC_BASE_URL?: string };
+type Env = {
+  DB?: D1Database;
+  DEMO_QUEUE?: Queue;
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_CHAT_ID?: string;
+  ADMIN_TOKEN?: string;
+  PUBLIC_BASE_URL?: string;
+};
 type Variables = Record<string, never>;
 const app = new Hono<{ Bindings: Env }>().basePath('/api');
 
@@ -172,16 +177,24 @@ app.post('/chat', async (c) => {
 });
 
 // ── POST /api/confirm-plan ─────────────────────────────────────
-// User confirmed the plan — kick off demo generation, no contact yet
+// User confirmed the plan — enqueue demo generation
 app.post('/confirm-plan', async (c) => {
   const { sessionId } = await c.req.json();
   if (!sessionId) return c.json({ error: 'sessionId required' }, 400);
-  const d1 = c.env?.DB;
-  c.executionCtx.waitUntil(
-    generateDemo(sessionId, undefined, d1)
-      .then(() => console.log('[demo-gen] done for', sessionId))
-      .catch((e) => console.error('[demo-gen] error:', e))
-  );
+
+  const db = getDb(c.env?.DB);
+  await db.update(sessions).set({ demoStatus: 'generating' }).where(eq(sessions.id, sessionId));
+
+  if (c.env?.DEMO_QUEUE) {
+    await c.env.DEMO_QUEUE.send({ type: 'demo-gen', sessionId });
+  } else {
+    // local dev fallback
+    const { generateDemo } = await import('$lib/ai/demo-gen');
+    c.executionCtx.waitUntil(
+      generateDemo(sessionId, undefined, c.env?.DB).catch((e: unknown) => console.error('[demo-gen]', e))
+    );
+  }
+
   return c.json({ ok: true });
 });
 
@@ -291,10 +304,16 @@ app.post('/demo/:sessionId/iterate', async (c) => {
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
   if (!session?.demoHtml) return c.json({ error: 'No demo to iterate' }, 404);
 
-  // Kick off async iteration
-  c.executionCtx.waitUntil(
-    iterateDemo(sessionId, instruction, session.demoHtml, c.env?.DB).catch((e) => console.error('[demo-iter] error:', e))
-  );
+  // Kick off async iteration via Queue
+  if (c.env?.DEMO_QUEUE) {
+    await db.update(sessions).set({ demoStatus: 'generating' }).where(eq(sessions.id, sessionId));
+    await c.env.DEMO_QUEUE.send({ type: 'demo-iter', sessionId, instruction, currentHtml: session.demoHtml });
+  } else {
+    const { iterateDemo } = await import('$lib/ai/demo-gen');
+    c.executionCtx.waitUntil(
+      iterateDemo(sessionId, instruction, session.demoHtml, c.env?.DB).catch((e: unknown) => console.error('[demo-iter]', e))
+    );
+  }
 
   return c.json({ ok: true });
 });
@@ -314,10 +333,15 @@ app.post('/save-demo', async (c) => {
     shareSlug: slug,
   }).where(eq(sessions.id, sessionId));
 
-  // Kick off story generation
-  c.executionCtx.waitUntil(
-    generateStory(sessionId, c.env?.DB).catch((e) => console.error('[story-gen] error:', e))
-  );
+  // Kick off story generation via Queue
+  if (c.env?.DEMO_QUEUE) {
+    await c.env.DEMO_QUEUE.send({ type: 'story-gen', sessionId });
+  } else {
+    const { generateStory } = await import('$lib/ai/story-gen');
+    c.executionCtx.waitUntil(
+      generateStory(sessionId, c.env?.DB).catch((e: unknown) => console.error('[story-gen]', e))
+    );
+  }
 
   return c.json({ ok: true, slug });
 });

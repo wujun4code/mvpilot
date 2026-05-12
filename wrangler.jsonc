@@ -15,6 +15,12 @@
     }
   ],
 
+  "queues": {
+    "producers": [
+      { "binding": "DEMO_QUEUE", "queue": "mvpilot-jobs" }
+    ]
+  },
+
   "routes": [
     {
       "pattern": "mvpilot.aipromptor.com",
