@@ -30,7 +30,7 @@ async function buildHtml(plan: any, productType: string, locale: string, client:
 产品信息：
 - 问题：${plan.problem}
 - 用户：${plan.user}  
-- 核心功能：${(plan.features || []).join('、')}
+- 核心功能：${(plan.features || []).slice(0, 3).join('、')}
 - 第一步：${plan.firstAction}
 
 风格：${styleGuide}
@@ -38,19 +38,19 @@ async function buildHtml(plan: any, productType: string, locale: string, client:
 严格要求：
 1. 只输出HTML，从<!DOCTYPE html>到</html>，不加任何说明
 2. 所有CSS和JS内联，**禁止任何外部资源**（无CDN无外链）
-3. 实现3个核心页面用tab切换
-4. 用假数据（张三李四王五），默认已登录
-5. 核心操作可以点击并有反馈
-6. CSS精简，**总行数控制在600行以内**，不写复杂动画
-7. 如果是微信小程序风格，加顶部导航栏和底部TabBar
+3. 实现2-3个核心页面用tab切换
+4. 用假数据（张三李四），默认已登录
+5. 核心操作可点击并有反馈
+6. CSS极简，**总行数控制在400行以内**，无复杂动画
+7. 微信小程序风格则加顶部导航栏和底部TabBar
 
-现在输出完整HTML：`;
+输出完整HTML：`;
 
   // Use streaming to avoid timeout on slow models
   const stream = await client.chat.completions.create({
     model,
     messages: [{ role: 'user', content: prompt }],
-    max_tokens: 6000,
+    max_tokens: 3500,
     stream: true,
   });
 
@@ -119,7 +119,7 @@ ${currentHtml.slice(0, 8000)}`;
     const stream = await client.chat.completions.create({
       model,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 6000,
+      max_tokens: 3500,
       stream: true,
     });
     let raw = '';
