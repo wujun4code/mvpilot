@@ -80,7 +80,7 @@ app.post('/chat', async (c) => {
     .where(eq(messages.sessionId, sessionId))
     .orderBy(asc(messages.createdAt));
 
-  const { client, model } = await getAIClient(modelId);
+  const { client, model } = await getAIClient(modelId, c.env?.DB);
   const locale = (session.locale as 'en' | 'zh') ?? 'en';
 
   const chatMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
