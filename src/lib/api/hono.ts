@@ -411,6 +411,15 @@ app.delete('/admin/models/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+// ── Admin: POST /api/admin/session/:id/reset-demo ───────────────
+app.post('/admin/session/:id/reset-demo', async (c) => {
+  const token = c.req.header('x-admin-token');
+  if (token !== (c.env?.ADMIN_TOKEN ?? process.env.ADMIN_TOKEN)) return c.json({ error: 'Unauthorized' }, 401);
+  const db = getDb(c.env?.DB);
+  const id = c.req.param('id');
+  await db.update(sessions).set({ demoStatus: null, demoHtml: null }).where(eq(sessions.id, id));
+  return c.json({ ok: true });
+});
 export const honoHandler: RequestHandler = async ({ request, platform }) => {
   const env = (platform as any)?.env ?? {};
   const ctx = (platform as any)?.context ?? { waitUntil: (p: Promise<unknown>) => p };
