@@ -19,6 +19,39 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Resolve D1 database_id
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create D1 database if it doesn't exist yet (idempotent)
+          npx wrangler d1 create mvpilot 2>&1 || true
+
+          # Extract database_id from listing (strip wrangler banner noise before JSON)
+          RAW=$(npx wrangler d1 list --json 2>/dev/null)
+          DB_ID=$(echo "$RAW" | python3 -c "
+import sys, json, re
+text = sys.stdin.read()
+m = re.search(r'\[.*\]', text, re.DOTALL)
+if not m:
+    sys.exit(0)
+rows = json.loads(m.group(0))
+for r in rows:
+    v = r.get('uuid') or r.get('id') or r.get('database_id') or ''
+    if r.get('name') == 'mvpilot' and v:
+        print(v)
+        break
+" | head -1)
+
+          if [ -z "$DB_ID" ]; then
+            echo "❌ Could not determine D1 database_id"
+            exit 1
+          fi
+
+          echo "✅ DB_ID=$DB_ID"
+          # Patch wrangler.jsonc for this run
+          sed -i "s/PLACEHOLDER_DATABASE_ID/$DB_ID/" wrangler.jsonc
+
       - name: Build
         run: npm run build
 
