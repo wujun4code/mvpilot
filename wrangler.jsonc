@@ -17,7 +17,7 @@
 
   "routes": [
     {
-      "pattern": "mvpilot.aipromptor.com/*",
+      "pattern": "mvpilot.aipromptor.com",
       "custom_domain": true
     }
   ]
