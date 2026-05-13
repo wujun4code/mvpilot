@@ -21,6 +21,8 @@ export const sessions = sqliteTable('sessions', {
   completedAt: text('completed_at'),
   contactEmail: text('contact_email'),
   contactWechat: text('contact_wechat'),
+  contactTelegram: text('contact_telegram'),
+  contactQq: text('contact_qq'),
   contactNote: text('contact_note'),
   notifiedAt: text('notified_at'),
   planJson: text('plan_json'),

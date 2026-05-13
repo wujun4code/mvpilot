@@ -201,7 +201,7 @@ app.post('/confirm-plan', async (c) => {
 // ── POST /api/confirm ───────────────────────────────────────────
 // User is happy with demo — save contact + notify founder
 app.post('/confirm', async (c) => {
-  const { sessionId, contactEmail, contactWechat, contactNote } = await c.req.json();
+  const { sessionId, contactEmail, contactWechat, contactTelegram, contactQq, contactNote } = await c.req.json();
 
   if (!sessionId) return c.json({ error: 'sessionId required' }, 400);
   const db = getDb(c.env?.DB);
@@ -215,6 +215,8 @@ app.post('/confirm', async (c) => {
       completedAt: new Date().toISOString(),
       contactEmail: contactEmail ?? null,
       contactWechat: contactWechat ?? null,
+      contactTelegram: contactTelegram ?? null,
+      contactQq: contactQq ?? null,
       contactNote: contactNote ?? null,
     })
     .where(eq(sessions.id, sessionId));
@@ -237,9 +239,11 @@ app.post('/confirm', async (c) => {
       plan ? `💡 <b>Idea:</b> ${esc(plan.problem)}` : '',
       plan?.user ? `👤 <b>Target:</b> ${esc(plan.user)}` : '',
       '',
-      contactEmail  ? `📧 Email: ${esc(contactEmail)}`   : '',
-      contactWechat ? `💬 WeChat: ${esc(contactWechat)}` : '',
-      contactNote   ? `📝 Note: ${esc(contactNote)}`     : '',
+      contactEmail    ? `📧 Email: ${esc(contactEmail)}`           : '',
+      contactWechat   ? `💬 WeChat: ${esc(contactWechat)}`       : '',
+      contactTelegram ? `✈️ Telegram: ${esc(contactTelegram)}` : '',
+      contactQq       ? `💬 QQ: ${esc(contactQq)}`               : '',
+      contactNote     ? `📝 Note: ${esc(contactNote)}`           : '',
       '',
       `🗨️ Chat: ${chatUrl}`,
       session.demoStatus === 'ready'  ? `🖥️ Demo: ${demoUrl}`   : '',

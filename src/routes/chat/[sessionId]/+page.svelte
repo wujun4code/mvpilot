@@ -31,6 +31,8 @@
   let showContactForm = $state(false);
   let contactEmail = $state('');
   let contactWechat = $state('');
+  let contactTelegram = $state('');
+  let contactQq = $state('');
   let confirmed = $state(false); // plan confirmed, demo generating/ready
   let submitted = $state(false); // contact submitted
 
@@ -493,7 +495,17 @@
                 <input bind:value={contactWechat} type="text" placeholder="WeChat ID"
                   class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333344] focus:outline-none focus:border-[#7c6cfa]/60 transition-colors" />
               </div>
-              <button onclick={handleSubmitContact} disabled={!contactEmail && !contactWechat}
+              <div>
+                <label class="text-xs text-[#555566] block mb-1">{c.telegramLabel}</label>
+                <input bind:value={contactTelegram} type="text" placeholder="@username"
+                  class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333344] focus:outline-none focus:border-[#7c6cfa]/60 transition-colors" />
+              </div>
+              <div>
+                <label class="text-xs text-[#555566] block mb-1">{c.qqLabel}</label>
+                <input bind:value={contactQq} type="text" placeholder="QQ number"
+                  class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333344] focus:outline-none focus:border-[#7c6cfa]/60 transition-colors" />
+              </div>
+              <button onclick={handleSubmitContact} disabled={!contactEmail && !contactWechat && !contactTelegram && !contactQq}
                 class="w-full py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] disabled:opacity-30 text-white font-semibold rounded-xl text-sm transition-all cursor-pointer">
                 {c.submitBtn}
               </button>
