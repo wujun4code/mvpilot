@@ -225,7 +225,7 @@ app.post('/confirm', async (c) => {
 
   if (telegramToken && telegramChatId) {
     const plan = session.planJson ? JSON.parse(session.planJson) : null;
-    const base = (process.env.PUBLIC_BASE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+    const base = (c.env?.PUBLIC_BASE_URL ?? process.env.PUBLIC_BASE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
     const chatUrl  = `${base}/chat/${sessionId}`;
     const demoUrl  = `${base}/demo/${sessionId}`;
     const storyUrl = `${base}/story/${sessionId}`;
@@ -248,16 +248,26 @@ app.post('/confirm', async (c) => {
       .filter(Boolean)
       .join('\n');
 
-    await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+    const tgRes = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: telegramChatId, text, parse_mode: 'Markdown' }),
-    }).catch(() => {}); // best-effort
+    }).catch((err: unknown) => {
+      console.error('[confirm] Telegram fetch error:', err);
+      return null;
+    });
 
-    await db
-      .update(sessions)
-      .set({ notifiedAt: new Date().toISOString() })
-      .where(eq(sessions.id, sessionId));
+    if (tgRes) {
+      const tgJson = await tgRes.json().catch(() => ({})) as { ok?: boolean; description?: string };
+      if (!tgRes.ok || !tgJson.ok) {
+        console.error('[confirm] Telegram notify failed:', JSON.stringify(tgJson));
+      } else {
+        await db
+          .update(sessions)
+          .set({ notifiedAt: new Date().toISOString() })
+          .where(eq(sessions.id, sessionId));
+      }
+    }
   }
 
   return c.json({ ok: true });
