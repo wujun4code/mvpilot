@@ -229,21 +229,23 @@ app.post('/confirm', async (c) => {
     const chatUrl  = `${base}/chat/${sessionId}`;
     const demoUrl  = `${base}/demo/${sessionId}`;
     const storyUrl = `${base}/story/${sessionId}`;
+    // Use HTML parse mode to avoid Markdown v1 issues with special chars (_, *, etc.)
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const text = [
-      '🚀 *New MVPilot Lead*',
+      '🚀 <b>New MVPilot Lead</b>',
       '',
-      plan ? `💡 *Idea:* ${plan.problem}` : '',
-      plan?.user ? `👤 *Target:* ${plan.user}` : '',
+      plan ? `💡 <b>Idea:</b> ${esc(plan.problem)}` : '',
+      plan?.user ? `👤 <b>Target:</b> ${esc(plan.user)}` : '',
       '',
-      contactEmail  ? `📧 Email: ${contactEmail}`   : '',
-      contactWechat ? `💬 WeChat: ${contactWechat}` : '',
-      contactNote   ? `📝 Note: ${contactNote}`     : '',
+      contactEmail  ? `📧 Email: ${esc(contactEmail)}`   : '',
+      contactWechat ? `💬 WeChat: ${esc(contactWechat)}` : '',
+      contactNote   ? `📝 Note: ${esc(contactNote)}`     : '',
       '',
       `🗨️ Chat: ${chatUrl}`,
       session.demoStatus === 'ready'  ? `🖥️ Demo: ${demoUrl}`   : '',
       session.storyStatus === 'ready' ? `📊 Story: ${storyUrl}` : '',
       '',
-      `🆔 Session: \`${sessionId}\``,
+      `🆔 Session: <code>${sessionId}</code>`,
     ]
       .filter(Boolean)
       .join('\n');
@@ -251,7 +253,7 @@ app.post('/confirm', async (c) => {
     const tgRes = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: telegramChatId, text, parse_mode: 'Markdown' }),
+      body: JSON.stringify({ chat_id: telegramChatId, text, parse_mode: 'HTML' }),
     }).catch((err: unknown) => {
       console.error('[confirm] Telegram fetch error:', err);
       return null;
