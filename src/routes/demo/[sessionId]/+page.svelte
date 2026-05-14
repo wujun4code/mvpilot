@@ -19,6 +19,8 @@
   let showContact = $state(false);
   let contactEmail = $state('');
   let contactWechat = $state('');
+  let contactTelegram = $state('');
+  let contactQq = $state('');
   let contactSubmitted = $state(false);
 
   onMount(() => {
@@ -86,11 +88,11 @@
   }
 
   async function submitContact() {
-    if (!contactEmail && !contactWechat) return;
+    if (!contactEmail && !contactWechat && !contactTelegram && !contactQq) return;
     await fetch('/api/confirm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, contactEmail, contactWechat }),
+      body: JSON.stringify({ sessionId, contactEmail, contactWechat, contactTelegram, contactQq }),
     });
     contactSubmitted = true;
   }
@@ -305,8 +307,12 @@
                     class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#444455] focus:outline-none focus:border-[#7c6cfa]/50" />
                   <input bind:value={contactWechat} type="text" placeholder="微信 ID"
                     class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#444455] focus:outline-none focus:border-[#7c6cfa]/50" />
+                  <input bind:value={contactTelegram} type="text" placeholder="Telegram @username"
+                    class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#444455] focus:outline-none focus:border-[#7c6cfa]/50" />
+                  <input bind:value={contactQq} type="text" placeholder="QQ"
+                    class="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#444455] focus:outline-none focus:border-[#7c6cfa]/50" />
                 </div>
-                <button onclick={submitContact} disabled={!contactEmail && !contactWechat}
+                <button onclick={submitContact} disabled={!contactEmail && !contactWechat && !contactTelegram && !contactQq}
                   class="w-full py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] disabled:opacity-30 text-white font-semibold rounded-xl text-sm cursor-pointer">
                   通知创始人 →
                 </button>
