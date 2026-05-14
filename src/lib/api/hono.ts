@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { getDb } from '$lib/db';
 import { sessions, messages, aiModels } from '$lib/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, and, desc, sql } from 'drizzle-orm';
 import { getAIClient } from '$lib/ai/client';
 import { getSystemPrompt } from '$lib/ai/prompts';
 import { nanoid } from 'nanoid';
@@ -405,6 +405,38 @@ app.get('/session/:id/summary', async (c) => {
     .from(sessions).where(eq(sessions.id, id)).limit(1);
   if (!s) return c.json({ error: 'Not found' }, 404);
   return c.json(s);
+});
+
+// ── Admin: GET /api/admin/leads ──────────────────────────────────
+// Returns sessions that have been notified (completed + contact submitted)
+app.get('/admin/leads', async (c) => {
+  const token = c.req.header('x-admin-token');
+  if (token !== (c.env?.ADMIN_TOKEN ?? process.env.ADMIN_TOKEN)) return c.json({ error: 'Unauthorized' }, 401);
+
+  const since = c.req.query('since'); // ISO timestamp, optional
+  const db = getDb(c.env?.DB);
+  const conditions = [sql`${sessions.notifiedAt} IS NOT NULL`];
+  if (since) conditions.push(sql`${sessions.notifiedAt} > ${since}`);
+
+  const rows = await db
+    .select({
+      id: sessions.id,
+      notifiedAt: sessions.notifiedAt,
+      completedAt: sessions.completedAt,
+      contactEmail: sessions.contactEmail,
+      contactWechat: sessions.contactWechat,
+      contactTelegram: sessions.contactTelegram,
+      contactQq: sessions.contactQq,
+      planJson: sessions.planJson,
+      demoStatus: sessions.demoStatus,
+      storyStatus: sessions.storyStatus,
+    })
+    .from(sessions)
+    .where(and(...conditions))
+    .orderBy(desc(sessions.notifiedAt))
+    .limit(10);
+
+  return c.json(rows);
 });
 
 // ── Admin: GET /api/admin/models ────────────────────────────────
