@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   completed_at TEXT,
   contact_email TEXT,
   contact_wechat TEXT,
+  contact_telegram TEXT,
+  contact_qq TEXT,
   contact_note TEXT,
   notified_at TEXT,
   plan_json TEXT,
