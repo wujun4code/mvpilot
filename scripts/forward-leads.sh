@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Forward new mvpilot leads to WeChat via OpenClaw Gateway
-# Runs as a cron job every 2 minutes
+# Forward new mvpilot leads to WeChat via WeChat Work IM bot API
 set -euo pipefail
 
 # === Configuration ===
-# LEADS_API_KEY — shared secret between this script and the deployed mvpilot worker
-# Generate with: openssl rand -hex 16
 LEADS_API_KEY="mvpilot-leads-key-2026"
-GATEWAY_TOKEN="d6a7427980e7d7e34c2c152effac0083b23eeff83dbd6099"
-GATEWAY_URL="http://127.0.0.1:18789"
 LEADS_URL="https://mvpilot.aipromptor.com/api/admin/leads"
 STATE_FILE="/tmp/mvpilot-leads-state"
+
+# WeChat IM bot credentials (from openclaw-weixin plugin config)
+WECHAT_BASE_URL="https://ilinkai.weixin.qq.com"
+WECHAT_TOKEN="49c9cf564a49@im.bot:060000ff771c10ebe890ff8f69a2981aacd286"
 WECHAT_TO="o9cq801o1iHi07nt6t_II2ZBdOuE@im.wechat"
+WECHAT_CONTEXT_TOKEN="AARzJWAFAAABAAAAAABeDlPvqQkO4v82fsX7aSAAAAB+9905Q6UiugPBawU3n3cyzQX+LkN8ofRzsCZYN0mt7kQ+ePtcS4mPUM3YrIZlcSD9GfzeJyULYFvm252akqoWhhTvyjGD"
 
 # === Get last seen timestamp ===
 LAST_SEEN="$(cat "$STATE_FILE" 2>/dev/null || date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)"
@@ -32,9 +32,10 @@ echo "$LEADS" | python3 -c "
 import json, sys, os, urllib.request
 
 leads = json.load(sys.stdin)
-gateway = os.environ.get('GATEWAY_URL', 'http://127.0.0.1:18789')
-token = os.environ.get('GATEWAY_TOKEN', '')
+wechat_base = os.environ.get('WECHAT_BASE_URL', 'https://ilinkai.weixin.qq.com')
+wechat_token = os.environ.get('WECHAT_TOKEN', '')
 wechat_to = os.environ.get('WECHAT_TO', '')
+wechat_context = os.environ.get('WECHAT_CONTEXT_TOKEN', '')
 state_file = os.environ.get('STATE_FILE', '/tmp/mvpilot-leads-state')
 
 latest = ''
@@ -45,46 +46,64 @@ for lead in leads:
     
     plan = json.loads(lead.get('planJson') or 'null')
     
-    msg = '🚀 **新 MVPilot 线索**\n\n'
+    # Build message text
+    parts = ['🚀 新 MVPilot 线索\n']
     if plan:
-        msg += f'💡 想法: {plan.get(\"problem\", \"?\")}\n'
-        msg += f'👤 用户: {plan.get(\"user\", \"?\")}\n\n'
+        parts.append(f'💡 想法：{plan.get(\"problem\", \"?\")}')
+        parts.append(f'👤 用户：{plan.get(\"user\", \"?\")}')
+        parts.append('')
     
-    if lead.get('contactEmail'):    msg += f'📧 Email: {lead[\"contactEmail\"]}\n'
-    if lead.get('contactWechat'):   msg += f'💬 微信: {lead[\"contactWechat\"]}\n'
-    if lead.get('contactTelegram'): msg += f'✈️ Telegram: {lead[\"contactTelegram\"]}\n'
-    if lead.get('contactQq'):       msg += f'💬 QQ: {lead[\"contactQq\"]}\n'
+    if lead.get('contactEmail'):    parts.append(f'📧 Email：{lead[\"contactEmail\"]}')
+    if lead.get('contactWechat'):   parts.append(f'💬 微信：{lead[\"contactWechat\"]}')
+    if lead.get('contactTelegram'): parts.append(f'✈️ Telegram：{lead[\"contactTelegram\"]}')
+    if lead.get('contactQq'):       parts.append(f'💬 QQ：{lead[\"contactQq\"]}')
     
-    msg += f'\n🆔 Session: {lead[\"id\"]}'
-    msg += f'\n🔗 https://mvpilot.aipromptor.com/chat/{lead[\"id\"]}'
+    parts.append('')
+    parts.append(f'🆔 {lead[\"id\"][:12]}')
+    parts.append(f'🔗 https://mvpilot.aipromptor.com/chat/{lead[\"id\"]}')
     if lead.get('demoStatus') == 'ready':
-        msg += f'\n🖥️ https://mvpilot.aipromptor.com/demo/{lead[\"id\"]}'
+        parts.append(f'🖥️ https://mvpilot.aipromptor.com/demo/{lead[\"id\"]}')
     
-    # Send via Gateway /tools/invoke → sessions_send to openclaw-weixin
-    payload = json.dumps({
-        'tool': 'sessions_send',
-        'action': 'json',
-        'args': {
-            'sessionKey': f'openclaw-weixin:{wechat_to}',
-            'message': msg
+    text = chr(10).join(parts)
+    
+    # Build WeChat IM bot sendMessage request
+    body = json.dumps({
+        'msg': {
+            'from_user_id': '',
+            'to_user_id': wechat_to,
+            'client_id': os.urandom(8).hex(),
+            'message_type': 5,  # BOT
+            'message_state': 3, # FINISH
+            'item_list': [{
+                'type': 1,  # TEXT
+                'text_item': { 'text': text }
+            }],
+            'context_token': wechat_context or None,
+        },
+        'base_info': {
+            'channel_version': '2.4.3',
+            'bot_agent': 'mvpilot-forwarder/1.0',
         }
-    }).encode('utf-8')
+    })
     
     req = urllib.request.Request(
-        f'{gateway}/tools/invoke',
-        data=payload,
+        f'{wechat_base}/ilink/bot/sendmessage',
+        data=body.encode('utf-8'),
         headers={
-            'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
+            'Authorization': f'Bearer {wechat_token}',
+            'AuthorizationType': 'ilink_bot_token',
+            'iLink-App-Id': 'bot',
         },
         method='POST'
     )
     
     try:
-        resp = urllib.request.urlopen(req, timeout=10)
+        resp = urllib.request.urlopen(req, timeout=15)
         print(f'  ✓ Forwarded lead {lead[\"id\"][:12]}...')
     except Exception as e:
-        print(f'  ✗ Failed: {e}')
+        body_text = e.read().decode('utf-8') if hasattr(e, 'read') else str(e)
+        print(f'  ✗ Failed: {body_text[:200]}')
 
 # Update state
 if latest:
