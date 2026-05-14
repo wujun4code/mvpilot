@@ -410,8 +410,12 @@ app.get('/session/:id/summary', async (c) => {
 // ── Admin: GET /api/admin/leads ──────────────────────────────────
 // Returns sessions that have been notified (completed + contact submitted)
 app.get('/admin/leads', async (c) => {
-  const token = c.req.header('x-admin-token');
-  if (token !== (c.env?.ADMIN_TOKEN ?? process.env.ADMIN_TOKEN)) return c.json({ error: 'Unauthorized' }, 401);
+  const adminToken = c.req.header('x-admin-token');
+  const leadsKey = c.req.query('key');
+  const expectedAdmin = c.env?.ADMIN_TOKEN ?? process.env.ADMIN_TOKEN;
+  const expectedLeadsKey = c.env?.LEADS_API_KEY ?? process.env.LEADS_API_KEY;
+  const authorized = (adminToken && adminToken === expectedAdmin) || (leadsKey && leadsKey === expectedLeadsKey);
+  if (!authorized) return c.json({ error: 'Unauthorized' }, 401);
 
   const since = c.req.query('since'); // ISO timestamp, optional
   const db = getDb(c.env?.DB);

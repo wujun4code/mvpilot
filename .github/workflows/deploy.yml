@@ -95,6 +95,7 @@ jobs:
           echo "${{ secrets.TELEGRAM_CHAT_ID }}"    | npx wrangler secret put TELEGRAM_CHAT_ID    --name mvpilot
           echo "${{ secrets.ADMIN_TOKEN }}"          | npx wrangler secret put ADMIN_TOKEN          --name mvpilot
           echo "https://mvpilot.aipromptor.com"      | npx wrangler secret put PUBLIC_BASE_URL      --name mvpilot
+          echo "${{ secrets.LEADS_API_KEY }}"         | npx wrangler secret put LEADS_API_KEY         --name mvpilot
 
       - name: Deploy Consumer Worker
         env:
