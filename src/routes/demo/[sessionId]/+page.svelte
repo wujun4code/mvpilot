@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { goto } from '$app/navigation';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -9,6 +10,31 @@
   let status = $state<string | null>(data.initialStatus ?? null);
   let productType = $state<string>(data.productType ?? 'saas');
   let pollTimer: ReturnType<typeof setInterval>;
+
+  // Confirm back dialog
+  let showConfirmBack = $state(false);
+  let pendingBack = $state(false);
+
+  function handleBackToChat() {
+    if (status === 'ready' && !demoSaved) {
+      showConfirmBack = true;
+    } else {
+      goto(`/chat/${sessionId}`);
+    }
+  }
+
+  async function confirmSaveAndBack() {
+    showConfirmBack = false;
+    pendingBack = true;
+    await saveDemo();
+    pendingBack = false;
+    goto(`/chat/${sessionId}`);
+  }
+
+  function confirmDiscardAndBack() {
+    showConfirmBack = false;
+    goto(`/chat/${sessionId}`);
+  }
 
   // Iterate
   let iterateInput = $state('');
@@ -113,7 +139,7 @@
     <a href="/" class="font-extrabold text-base tracking-tight no-underline text-white">MVP<span class="text-[#7c6cfa]">ilot</span></a>
     <div class="flex items-center gap-3">
       <span class="text-xs text-[#555566]">Demo Preview</span>
-      <a href="/chat/{sessionId}" class="text-xs text-[#7c6cfa] hover:underline">← Back to chat</a>
+      <button onclick={handleBackToChat} class="text-xs text-[#7c6cfa] hover:underline cursor-pointer bg-transparent border-0">← Back to chat</button>
     </div>
   </header>
 
@@ -327,7 +353,7 @@
           {/if}
 
           <div class="flex gap-2 justify-center">
-            <a href="/chat/{sessionId}" class="text-xs text-[#444455] hover:text-white no-underline transition-colors">← 返回对话</a>
+            <button onclick={handleBackToChat} class="text-xs text-[#444455] hover:text-white transition-colors cursor-pointer bg-transparent border-0">← 返回对话</button>
             <span class="text-[#333344]">·</span>
             <a href="/api/demo/{sessionId}/html" target="_blank" class="text-xs text-[#444455] hover:text-white no-underline transition-colors">全屏打开 ↗</a>
           </div>
@@ -337,3 +363,35 @@
 
   </div>
 </div>
+
+<!-- Confirm Back Dialog -->
+{#if showConfirmBack}
+  <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onclick={() => showConfirmBack = false}>
+    <div class="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl shadow-black/40" onclick={(e) => e.stopPropagation()}>
+      <div class="text-center space-y-4">
+        <div class="text-3xl">💾</div>
+        <h3 class="text-white font-bold text-lg">{locale === 'zh' ? '保存这个 Demo？' : 'Save this demo?'}</h3>
+        <p class="text-sm text-[#888899]">
+          {locale === 'zh'
+            ? 'Demo 已经生成好了，返回对话后可以随时回来查看。保存后还能生成 Pitch Story 演示文稿。'
+            : 'Your demo is ready. Save it now so you can come back anytime, or discard and regenerate later.'}
+        </p>
+        <div class="space-y-2">
+          <button onclick={confirmSaveAndBack}
+            disabled={pendingBack}
+            class="w-full py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] disabled:opacity-30 text-white font-semibold rounded-xl text-sm cursor-pointer transition-all">
+            {pendingBack ? (locale === 'zh' ? '保存中…' : 'Saving…') : (locale === 'zh' ? '💾 保存并返回' : '💾 Save & go back')}
+          </button>
+          <button onclick={confirmDiscardAndBack}
+            class="w-full py-2.5 border border-white/10 hover:bg-white/5 text-white/60 hover:text-white font-medium rounded-xl text-sm cursor-pointer transition-all">
+            {locale === 'zh' ? '舍弃，直接返回' : 'Discard & go back'}
+          </button>
+        </div>
+        <button onclick={() => showConfirmBack = false}
+          class="text-xs text-[#555566] hover:text-white cursor-pointer bg-transparent border-0 transition-colors">
+          {locale === 'zh' ? '取消' : 'Cancel'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
