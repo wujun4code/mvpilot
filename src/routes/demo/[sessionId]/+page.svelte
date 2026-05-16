@@ -53,10 +53,20 @@
     if (status !== 'ready' && status !== 'failed') {
       pollTimer = setInterval(checkStatus, 3000);
     }
+    // If story was mid-generation, resume polling
+    if (storyStatus === 'generating') {
+      storyPollTimer = setInterval(async () => {
+        const r = await fetch(`/api/story/${sessionId}/status`);
+        const d = await r.json();
+        storyStatus = d.status;
+        if (storyStatus === 'ready' || storyStatus === 'failed') clearInterval(storyPollTimer);
+      }, 4000);
+    }
   });
-  let demoSaved = $state(false);
-  let shareUrl = $state('');
-  let storyStatus = $state<string | null>(null);
+  // If story was already generated, show it directly
+  let demoSaved = $state(data.storyStatus === 'ready' || data.storyStatus === 'generating' || false);
+  let shareUrl = $state(demoSaved ? `${window.location.origin}/demo/${sessionId}` : '');
+  let storyStatus = $state<string | null>(data.storyStatus ?? null);
   let storyPollTimer: ReturnType<typeof setInterval>;
 
   async function saveDemo() {
@@ -65,7 +75,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId }),
     });
-    const data = await res.json();
+    const d = await res.json();
     demoSaved = true;
     shareUrl = `${window.location.origin}/demo/${sessionId}`;
     storyStatus = 'generating';

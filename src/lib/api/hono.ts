@@ -15,9 +15,86 @@ type Env = {
   TELEGRAM_CHAT_ID?: string;
   ADMIN_TOKEN?: string;
   PUBLIC_BASE_URL?: string;
+  WEIXIN_BOT_TOKEN?: string;
+  WEIXIN_TO_USER_ID?: string;
+  WEIXIN_CONTEXT_TOKEN?: string;
+  WEIXIN_BASE_URL?: string;
+  WEIXIN_APP_ID?: string;
+  WEIXIN_APP_CLIENT_VERSION?: string;
+  WEIXIN_CHANNEL_VERSION?: string;
+  WEIXIN_BOT_AGENT?: string;
 };
 type Variables = Record<string, never>;
 const app = new Hono<{ Bindings: Env }>().basePath('/api');
+
+function htmlToPlainText(text: string) {
+  return text
+    .replace(/<\/b>/g, '')
+    .replace(/<b>/g, '')
+    .replace(/<code>/g, '')
+    .replace(/<\/code>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+function randomClientId(prefix = 'mvpilot') {
+  const bytes = new Uint8Array(3);
+  crypto.getRandomValues(bytes);
+  return `${prefix}-${Date.now()}-${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function randomWechatUin() {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  const n = new DataView(bytes.buffer).getUint32(0);
+  return btoa(String(n));
+}
+
+async function sendWeixinLead(env: Env | undefined, text: string) {
+  const token = env?.WEIXIN_BOT_TOKEN ?? process.env.WEIXIN_BOT_TOKEN;
+  const to = env?.WEIXIN_TO_USER_ID ?? process.env.WEIXIN_TO_USER_ID;
+  const contextToken = env?.WEIXIN_CONTEXT_TOKEN ?? process.env.WEIXIN_CONTEXT_TOKEN;
+  if (!token || !to || !contextToken) return { skipped: true, reason: 'missing weixin env' };
+
+  const baseUrl = (env?.WEIXIN_BASE_URL ?? process.env.WEIXIN_BASE_URL ?? 'https://ilinkai.weixin.qq.com').replace(/\/$/, '');
+  const appId = env?.WEIXIN_APP_ID ?? process.env.WEIXIN_APP_ID ?? '';
+  const appClientVersion = env?.WEIXIN_APP_CLIENT_VERSION ?? process.env.WEIXIN_APP_CLIENT_VERSION ?? '132099';
+  const channelVersion = env?.WEIXIN_CHANNEL_VERSION ?? process.env.WEIXIN_CHANNEL_VERSION ?? '2.4.3';
+  const botAgent = env?.WEIXIN_BOT_AGENT ?? process.env.WEIXIN_BOT_AGENT ?? 'OpenClaw';
+
+  const body = {
+    msg: {
+      from_user_id: '',
+      to_user_id: to,
+      client_id: randomClientId(),
+      message_type: 2, // BOT
+      message_state: 2, // FINISH
+      item_list: [{ type: 1, text_item: { text } }],
+      context_token: contextToken,
+    },
+    base_info: { channel_version: channelVersion, bot_agent: botAgent },
+  };
+
+  const res = await fetch(`${baseUrl}/ilink/bot/sendmessage`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      AuthorizationType: 'ilink_bot_token',
+      Authorization: `Bearer ${token}`,
+      'X-WECHAT-UIN': randomWechatUin(),
+      'iLink-App-Id': appId,
+      'iLink-App-ClientVersion': appClientVersion,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const raw = await res.text().catch(() => '');
+    throw new Error(`Weixin notify failed ${res.status}: ${raw}`);
+  }
+  return { skipped: false, ok: true };
+}
 
 // ── POST /api/session/start ─────────────────────────────────────
 app.post('/session/start', async (c) => {
@@ -221,39 +298,47 @@ app.post('/confirm', async (c) => {
     })
     .where(eq(sessions.id, sessionId));
 
-  // Notify founder via Telegram
+  // Notify founder immediately via Telegram and WeChat.
   const telegramToken = c.env?.TELEGRAM_BOT_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN;
   const telegramChatId = c.env?.TELEGRAM_CHAT_ID ?? process.env.TELEGRAM_CHAT_ID;
+  const plan = session.planJson ? JSON.parse(session.planJson) : null;
+  const base = (c.env?.PUBLIC_BASE_URL ?? process.env.PUBLIC_BASE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+  const chatUrl  = `${base}/chat/${sessionId}`;
+  const demoUrl  = `${base}/demo/${sessionId}`;
+  const storyUrl = `${base}/story/${sessionId}`;
+  // Use HTML parse mode for Telegram to avoid Markdown v1 issues with special chars (_, *, etc.)
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const text = [
+    '🚀 <b>New MVPilot Lead</b>',
+    '',
+    plan ? `💡 <b>Idea:</b> ${esc(plan.problem)}` : '',
+    plan?.user ? `👤 <b>Target:</b> ${esc(plan.user)}` : '',
+    '',
+    contactEmail    ? `📧 Email: ${esc(contactEmail)}`           : '',
+    contactWechat   ? `💬 WeChat: ${esc(contactWechat)}`       : '',
+    contactTelegram ? `✈️ Telegram: ${esc(contactTelegram)}` : '',
+    contactQq       ? `💬 QQ: ${esc(contactQq)}`               : '',
+    contactNote     ? `📝 Note: ${esc(contactNote)}`           : '',
+    '',
+    `🗨️ Chat: ${chatUrl}`,
+    session.demoStatus === 'ready'  ? `🖥️ Demo: ${demoUrl}`   : '',
+    session.storyStatus === 'ready' ? `📊 Story: ${storyUrl}` : '',
+    '',
+    `🆔 Session: <code>${sessionId}</code>`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  let notified = false;
+  const weixinText = htmlToPlainText(text);
+  try {
+    const wxResult = await sendWeixinLead(c.env, weixinText);
+    if (!wxResult.skipped) notified = true;
+  } catch (err) {
+    console.error('[confirm] Weixin notify failed:', err);
+  }
 
   if (telegramToken && telegramChatId) {
-    const plan = session.planJson ? JSON.parse(session.planJson) : null;
-    const base = (c.env?.PUBLIC_BASE_URL ?? process.env.PUBLIC_BASE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
-    const chatUrl  = `${base}/chat/${sessionId}`;
-    const demoUrl  = `${base}/demo/${sessionId}`;
-    const storyUrl = `${base}/story/${sessionId}`;
-    // Use HTML parse mode to avoid Markdown v1 issues with special chars (_, *, etc.)
-    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const text = [
-      '🚀 <b>New MVPilot Lead</b>',
-      '',
-      plan ? `💡 <b>Idea:</b> ${esc(plan.problem)}` : '',
-      plan?.user ? `👤 <b>Target:</b> ${esc(plan.user)}` : '',
-      '',
-      contactEmail    ? `📧 Email: ${esc(contactEmail)}`           : '',
-      contactWechat   ? `💬 WeChat: ${esc(contactWechat)}`       : '',
-      contactTelegram ? `✈️ Telegram: ${esc(contactTelegram)}` : '',
-      contactQq       ? `💬 QQ: ${esc(contactQq)}`               : '',
-      contactNote     ? `📝 Note: ${esc(contactNote)}`           : '',
-      '',
-      `🗨️ Chat: ${chatUrl}`,
-      session.demoStatus === 'ready'  ? `🖥️ Demo: ${demoUrl}`   : '',
-      session.storyStatus === 'ready' ? `📊 Story: ${storyUrl}` : '',
-      '',
-      `🆔 Session: <code>${sessionId}</code>`,
-    ]
-      .filter(Boolean)
-      .join('\n');
-
     const tgRes = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -268,12 +353,16 @@ app.post('/confirm', async (c) => {
       if (!tgRes.ok || !tgJson.ok) {
         console.error('[confirm] Telegram notify failed:', JSON.stringify(tgJson));
       } else {
-        await db
-          .update(sessions)
-          .set({ notifiedAt: new Date().toISOString() })
-          .where(eq(sessions.id, sessionId));
+        notified = true;
       }
     }
+  }
+
+  if (notified) {
+    await db
+      .update(sessions)
+      .set({ notifiedAt: new Date().toISOString() })
+      .where(eq(sessions.id, sessionId));
   }
 
   return c.json({ ok: true });
@@ -284,12 +373,12 @@ app.get('/demo/:sessionId/status', async (c) => {
   const sessionId = c.req.param('sessionId');
   const db = getDb(c.env?.DB);
   const [session] = await db
-    .select({ demoStatus: sessions.demoStatus, productType: sessions.productType, locale: sessions.locale })
+    .select({ demoStatus: sessions.demoStatus, productType: sessions.productType, locale: sessions.locale, storyStatus: sessions.storyStatus, savedAt: sessions.savedAt })
     .from(sessions)
     .where(eq(sessions.id, sessionId))
     .limit(1);
   if (!session) return c.json({ error: 'Not found' }, 404);
-  return c.json({ status: session.demoStatus, productType: session.productType, locale: session.locale });
+  return c.json({ status: session.demoStatus, productType: session.productType, locale: session.locale, storyStatus: session.storyStatus, savedAt: session.savedAt });
 });
 
 // ── GET /api/demo/:sessionId/html ───────────────────────────────
