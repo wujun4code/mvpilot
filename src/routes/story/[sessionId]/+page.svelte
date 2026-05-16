@@ -1,14 +1,17 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { page } from '$app/stores';
+  import type { PageData } from './$types';
 
-  const sessionId = $page.params.sessionId;
-  let status = $state<string | null>(null);
+  let { data }: { data: PageData } = $props();
+  const sessionId = data.sessionId;
+  let status = $state<string | null>(data.storyStatus ?? null);
   let pollTimer: ReturnType<typeof setInterval>;
 
   onMount(() => {
-    check();
-    pollTimer = setInterval(check, 3000);
+    // Only poll if story is still being generated
+    if (status !== 'ready' && status !== 'failed') {
+      pollTimer = setInterval(check, 3000);
+    }
   });
   onDestroy(() => clearInterval(pollTimer));
 
