@@ -53,6 +53,10 @@
     if (status !== 'ready' && status !== 'failed') {
       pollTimer = setInterval(checkStatus, 3000);
     }
+    // Set shareUrl in onMount so window is available (not during SSR)
+    if (demoSaved) {
+      shareUrl = `${window.location.origin}/demo/${sessionId}`;
+    }
     // If story was mid-generation, resume polling
     if (storyStatus === 'generating') {
       storyPollTimer = setInterval(async () => {
@@ -65,7 +69,7 @@
   });
   // If story was already generated, show it directly
   let demoSaved = $state(data.storyStatus === 'ready' || data.storyStatus === 'generating' || false);
-  let shareUrl = $state(demoSaved ? `${window.location.origin}/demo/${sessionId}` : '');
+  let shareUrl = $state('');
   let storyStatus = $state<string | null>(data.storyStatus ?? null);
   let storyPollTimer: ReturnType<typeof setInterval>;
 
