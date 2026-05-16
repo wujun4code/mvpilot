@@ -110,25 +110,15 @@
           <span class="text-sm text-[#4ade80] font-medium">Pitch Story Ready</span>
         </div>
 
-        <!-- Story iframe -->
-        <div class="w-full max-w-5xl rounded-xl overflow-hidden border border-white/10 shadow-2xl">
-          <div class="bg-[#1a1a28] px-4 py-2.5 flex items-center gap-3 border-b border-white/5">
-            <div class="flex gap-1.5">
-              <div class="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
-              <div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
-              <div class="w-3 h-3 rounded-full bg-[#28c840]"></div>
-            </div>
-            <div class="flex-1 bg-[#0a0a0f] rounded-md px-3 py-1 text-xs text-[#555566]">
-              mvpilot.story / pitch
-            </div>
-          </div>
-          <iframe
-            key={iframeKey}
-            src="/api/story/{sessionId}/html"
-            title="Pitch Story"
-            class="w-full border-0 block"
-            style="height:600px"
-          ></iframe>
+        <!-- Open full-screen story directly (bypasses iframe issues) -->
+        <div class="w-full max-w-2xl bg-[#0f0f18] border border-white/10 rounded-xl p-8 text-center space-y-4">
+          <div class="text-5xl">📊</div>
+          <p class="text-white font-semibold text-lg">Pitch Story 已生成</p>
+          <p class="text-sm text-[#888899]">全屏模式下浏览效果最佳，支持键盘 ← → 切换幻灯片</p>
+          <a href="/api/story/{sessionId}/html"
+            class="inline-block px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90 text-white font-bold rounded-xl no-underline transition-all">
+            🖥️ 打开 Pitch Story
+          </a>
         </div>
 
         <!-- Action buttons -->
@@ -139,10 +129,6 @@
           </button>
           <a href="/demo/{sessionId}" class="px-4 py-2 border border-white/10 bg-[#13131a] hover:bg-white/5 text-white text-sm font-semibold rounded-xl no-underline transition-all">
             ← Back to demo
-          </a>
-          <a href="/api/story/{sessionId}/html" target="_blank"
-            class="px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90 text-white text-sm font-semibold rounded-xl no-underline transition-all">
-            全屏查看 ↗
           </a>
         </div>
 
@@ -162,10 +148,6 @@
             <p class="text-xs text-red-400 mt-2">{iterateError}</p>
           {/if}
         </div>
-
-        <p class="text-xs text-[#333344] text-center max-w-md">
-          AI 生成的演示文稿，基于你的 MVP 方案。点击幻灯片或按键盘方向键切换。
-        </p>
       </div>
     {/if}
 

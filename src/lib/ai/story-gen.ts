@@ -128,11 +128,39 @@ ${scenesJson}
   let raw = '';
   for await (const chunk of stream) raw += chunk.choices[0]?.delta?.content ?? '';
 
-  return raw
+  let html = raw
     .replace(/^```html\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/, '')
     .trim();
+
+  // ── Fix slide navigation: add deck translate so slides actually move into view ──
+  // The AI often generates a flex-row layout with min-width:100vw slides but forgets
+  // to scroll/translate the deck when navigating. We patch the JS to translate the deck.
+  html = html.replace(
+    /(function updateSlide\(index\) \{)[^}]*\}/,
+    `function updateSlide(index) {
+                slides.forEach((slide, i) => {
+                    slide.classList.remove('active', 'prev', 'next');
+                    if (i === index) slide.classList.add('active');
+                    else if (i < index) slide.classList.add('prev');
+                    else if (i > index) slide.classList.add('next');
+                });
+                // Translate deck container to bring the active slide into view
+                const deck = document.getElementById('deckContainer') || document.querySelector('.deck');
+                if (deck) deck.style.transform = 'translateX(-' + (index * 100) + 'vw)';
+                const progressPercent = ((index + 1) / totalSlides) * 100;
+                progressFill.style.width = progressPercent + '%';
+                slideIndicator.textContent = (index + 1) + ' / ' + totalSlides;
+            }`
+  );
+
+  // ── Fix CSS: ensure html element also hides overflow and deck transitions smoothly ──
+  html = html.replace(
+    '</style>',
+    '    html { overflow: hidden; }\n    .deck { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }\n  </style>'
+  );
+  return html;
 }
 
 export async function generateStory(sessionId: string, d1?: D1Database): Promise<void> {
@@ -222,6 +250,29 @@ ${currentHtml.slice(0, 20000)}`;
         .replace(/\s*```$/, '')
         .trim();
     }
+
+    // ── Fix slide navigation: add deck translate ──
+    cleanHtml = cleanHtml.replace(
+      /(function updateSlide\(index\) \{)[^}]*\}/,
+      `function updateSlide(index) {
+                slides.forEach((slide, i) => {
+                    slide.classList.remove('active', 'prev', 'next');
+                    if (i === index) slide.classList.add('active');
+                    else if (i < index) slide.classList.add('prev');
+                    else if (i > index) slide.classList.add('next');
+                });
+                const deck = document.getElementById('deckContainer') || document.querySelector('.deck');
+                if (deck) deck.style.transform = 'translateX(-' + (index * 100) + 'vw)';
+                const progressPercent = ((index + 1) / totalSlides) * 100;
+                progressFill.style.width = progressPercent + '%';
+                slideIndicator.textContent = (index + 1) + ' / ' + totalSlides;
+            }`
+    );
+    // ── Fix CSS: ensure html overflow and deck transition ──
+    cleanHtml = cleanHtml.replace(
+      '</style>',
+      '    html { overflow: hidden; }\n    .deck { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }\n  </style>'
+    );
 
     if (!cleanHtml || cleanHtml.length < 500) throw new Error('Empty iteration result');
 
