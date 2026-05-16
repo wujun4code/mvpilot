@@ -7,8 +7,15 @@
   let status = $state<string | null>(data.storyStatus ?? null);
   let pollTimer: ReturnType<typeof setInterval>;
 
+  // Iteration
+  let iterateInput = $state('');
+  let iterating = $state(false);
+  let iterateError = $state('');
+
+  // Iframe key to force reload when story is regenerated
+  let iframeKey = $state(0);
+
   onMount(() => {
-    // Only poll if story is still being generated
     if (status !== 'ready' && status !== 'failed') {
       pollTimer = setInterval(check, 3000);
     }
@@ -21,12 +28,40 @@
     const d = await res.json();
     status = d.status;
     if (status === 'ready' || status === 'failed') clearInterval(pollTimer);
+    if (status === 'ready') iframeKey++;
+  }
+
+  async function regenerate() {
+    status = 'generating';
+    const res = await fetch(`/api/story/${sessionId}/regenerate`, { method: 'POST' });
+    if (!res.ok) { status = 'failed'; return; }
+    pollTimer = setInterval(check, 3000);
+  }
+
+  async function iterate() {
+    if (!iterateInput.trim() || iterating) return;
+    iterating = true;
+    iterateError = '';
+    try {
+      const res = await fetch(`/api/story/${sessionId}/iterate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruction: iterateInput }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      iterateInput = '';
+      status = 'generating';
+      pollTimer = setInterval(check, 3000);
+    } catch {
+      iterateError = '生成失败，请重试';
+    } finally {
+      iterating = false;
+    }
   }
 </script>
 
 <svelte:head>
   <title>MVPilot — Pitch Story</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </svelte:head>
 
 <div class="min-h-screen bg-[#0a0a0f] flex flex-col">
@@ -62,7 +97,10 @@
       <div class="text-center space-y-4">
         <div class="text-4xl">😢</div>
         <p class="text-white font-semibold">生成失败</p>
-        <a href="/demo/{sessionId}" class="inline-block px-5 py-2.5 bg-[#7c6cfa] text-white text-sm font-semibold rounded-xl no-underline">← 返回 Demo</a>
+        <button onclick={regenerate}
+          class="px-5 py-2.5 bg-[#7c6cfa] hover:bg-[#6a5ae8] text-white text-sm font-semibold rounded-xl cursor-pointer transition-all">
+          🔄 重新生成
+        </button>
       </div>
 
     {:else if status === 'ready'}
@@ -72,7 +110,7 @@
           <span class="text-sm text-[#4ade80] font-medium">Pitch Story Ready</span>
         </div>
 
-        <!-- Browser chrome wrapper -->
+        <!-- Story iframe -->
         <div class="w-full max-w-5xl rounded-xl overflow-hidden border border-white/10 shadow-2xl">
           <div class="bg-[#1a1a28] px-4 py-2.5 flex items-center gap-3 border-b border-white/5">
             <div class="flex gap-1.5">
@@ -85,6 +123,7 @@
             </div>
           </div>
           <iframe
+            key={iframeKey}
             src="/api/story/{sessionId}/html"
             title="Pitch Story"
             class="w-full border-0 block"
@@ -92,14 +131,36 @@
           ></iframe>
         </div>
 
+        <!-- Action buttons -->
         <div class="flex gap-3 flex-wrap justify-center">
-          <a href="/demo/{sessionId}" class="px-5 py-2.5 border border-white/10 bg-[#13131a] hover:bg-white/5 text-white text-sm font-semibold rounded-xl no-underline transition-all">
+          <button onclick={regenerate}
+            class="px-4 py-2 border border-white/10 bg-[#13131a] hover:bg-white/5 text-white text-sm font-semibold rounded-xl cursor-pointer transition-all">
+            🔄 重新生成
+          </button>
+          <a href="/demo/{sessionId}" class="px-4 py-2 border border-white/10 bg-[#13131a] hover:bg-white/5 text-white text-sm font-semibold rounded-xl no-underline transition-all">
             ← Back to demo
           </a>
           <a href="/api/story/{sessionId}/html" target="_blank"
-            class="px-5 py-2.5 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90 text-white text-sm font-semibold rounded-xl no-underline transition-all">
+            class="px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90 text-white text-sm font-semibold rounded-xl no-underline transition-all">
             全屏查看 ↗
           </a>
+        </div>
+
+        <!-- AI iteration -->
+        <div class="w-full max-w-2xl bg-[#13131a] border border-white/5 rounded-xl p-4">
+          <p class="text-xs text-[#888899] mb-2">🤖 告诉 AI 你想怎么优化这个 Pitch Story</p>
+          <div class="flex gap-2">
+            <input bind:value={iterateInput}
+              placeholder="如：把主色调换成蓝色，增加市场数据图表，调整文案语气…"
+              class="flex-1 bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-[#444455] focus:outline-none focus:border-[#7c6cfa]/50" />
+            <button onclick={iterate} disabled={!iterateInput.trim() || iterating}
+              class="px-4 py-2 bg-[#7c6cfa] hover:bg-[#6a5ae8] disabled:opacity-30 text-white text-sm font-semibold rounded-lg transition-all cursor-pointer shrink-0">
+              {iterating ? '生成中…' : '应用'}
+            </button>
+          </div>
+          {#if iterateError}
+            <p class="text-xs text-red-400 mt-2">{iterateError}</p>
+          {/if}
         </div>
 
         <p class="text-xs text-[#333344] text-center max-w-md">

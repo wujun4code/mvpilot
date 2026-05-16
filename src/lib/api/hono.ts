@@ -478,6 +478,51 @@ app.get('/story/:sessionId/html', async (c) => {
   });
 });
 
+// ── POST /api/story/:sessionId/iterate ───────────────────────────
+app.post('/story/:sessionId/iterate', async (c) => {
+  const sessionId = c.req.param('sessionId');
+  const { instruction } = await c.req.json();
+  if (!instruction || !instruction.trim()) return c.json({ error: 'instruction required' }, 400);
+
+  const db = getDb(c.env?.DB);
+  const [session] = await db
+    .select({ storyHtml: sessions.storyHtml })
+    .from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (!session?.storyHtml) return c.json({ error: 'No story to iterate' }, 404);
+
+  if (c.env?.DEMO_QUEUE) {
+    await c.env.DEMO_QUEUE.send({ type: 'story-iter', sessionId, instruction, currentHtml: session.storyHtml });
+  } else {
+    const { iterateStory } = await import('$lib/ai/story-gen');
+    c.executionCtx.waitUntil(
+      iterateStory(sessionId, instruction, session.storyHtml, c.env?.DB).catch((e: unknown) => console.error('[story-iter]', e))
+    );
+  }
+
+  return c.json({ ok: true });
+});
+
+// ── POST /api/story/:sessionId/regenerate ─────────────────────────
+app.post('/story/:sessionId/regenerate', async (c) => {
+  const sessionId = c.req.param('sessionId');
+  const db = getDb(c.env?.DB);
+  const [session] = await db
+    .select({ storyHtml: sessions.storyHtml })
+    .from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (!session) return c.json({ error: 'Not found' }, 404);
+
+  if (c.env?.DEMO_QUEUE) {
+    await c.env.DEMO_QUEUE.send({ type: 'story-gen', sessionId });
+  } else {
+    const { generateStory } = await import('$lib/ai/story-gen');
+    c.executionCtx.waitUntil(
+      generateStory(sessionId, c.env?.DB).catch((e: unknown) => console.error('[story-gen]', e))
+    );
+  }
+
+  return c.json({ ok: true });
+});
+
 // ── GET /api/session/:id/summary ──────────────────────────────
 // Returns saved demo/story status for chat page
 app.get('/session/:id/summary', async (c) => {

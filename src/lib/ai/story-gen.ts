@@ -102,15 +102,15 @@ Scenes：
 ${scenesJson}
 
 技术要求：
-- 单文件 HTML，所有 CSS/JS 内联，**禁止任何外部资源**（无 CDN、无外链）
+- 单文件 HTML，所有 CSS/JS 内联，**禁止任何外部资源**（无 CDN、无外链、无 Google Fonts）
 - 全屏幻灯片效果，每页铺满屏幕
 - 深色主题（背景 #0a0a0f），渐变紫色主色调（#7c6cfa → #c084fc）
 - 每个场景是一个全屏 slide，支持点击/键盘切换
 - 每个 slide 有入场动画（fade + slide up）
 - 底部显示进度条和 slide 编号
 - ${isZh ? '文字用中文' : 'Text in English'}
-- 每个 slide 根据 visual 字段，用纯 CSS/SVG 生成对应的视觉元素（图表、流程图、图标等）
-- **不要用占位符，要真实渲染内容**
+- 每个 slide 根据 visual 字段，用纯 CSS/SVG 生成对应的视觉元素（图表、流程图、图标等），**每个 slide 都要有丰富的 SVG 可视元素**
+- **不要用占位符，要真实渲染内容，每个slide占满可视区域**
 - 最后一页（CTA）加一个"联系我们"大按钮
 
 输出要求：
@@ -121,7 +121,7 @@ ${scenesJson}
   const stream = await client.chat.completions.create({
     model,
     messages: [{ role: 'user', content: prompt }],
-    max_tokens: 8000,
+    max_tokens: 12000,
     stream: true,
   });
 
@@ -166,6 +166,69 @@ export async function generateStory(sessionId: string, d1?: D1Database): Promise
 
   } catch (err: any) {
     console.error('[story-gen] failed:', err?.message ?? err);
+    await db.update(sessions).set({ storyStatus: 'failed' }).where(eq(sessions.id, sessionId));
+  }
+}
+
+// ── Iterate existing story ────────────────────────────────────────
+export async function iterateStory(sessionId: string, instruction: string, currentHtml: string, d1?: D1Database): Promise<void> {
+  const db = getDb(d1);
+  await db.update(sessions).set({ storyStatus: 'generating' }).where(eq(sessions.id, sessionId));
+  try {
+    const { client, model } = await getAIClient(undefined, d1);
+    console.log(`[story-iter] start sessionId=${sessionId}`);
+
+    const prompt = `修改以下 Pitch Story HTML，执行用户指令：${instruction}
+
+只输出修改后的完整HTML，从<!DOCTYPE html>开始，不加说明，不用markdown代码块。HTML必须以</html>结束，确保JS交互代码完整。
+
+当前HTML（前20000字符）：
+${currentHtml.slice(0, 20000)}`;
+
+    const stream = await client.chat.completions.create({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 12000,
+      stream: true,
+    });
+    let raw = '';
+    for await (const chunk of stream) {
+      raw += chunk.choices[0]?.delta?.content ?? '';
+    }
+    let cleanHtml = raw
+      .replace(/^```html\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim();
+
+    // Truncation recovery
+    if (cleanHtml.length > 100 && !cleanHtml.endsWith('</html>')) {
+      console.log(`[story-iter] output truncated at ${cleanHtml.length} chars, continuing...`);
+      const tailContext = cleanHtml.slice(-3000);
+      const continuePrompt = `The HTML above was cut off mid-generation. Continue from where it stopped and finish the remaining HTML. Return ONLY the missing parts. Final must end with </html>.\n\nLast ~3000 chars:\n${tailContext}`;
+      const stream2 = await client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: continuePrompt }],
+        max_tokens: 6000,
+        stream: true,
+      });
+      let cont = '';
+      for await (const chunk of stream2) {
+        cont += chunk.choices[0]?.delta?.content ?? '';
+      }
+      cleanHtml += cont
+        .replace(/^```html\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/, '')
+        .trim();
+    }
+
+    if (!cleanHtml || cleanHtml.length < 500) throw new Error('Empty iteration result');
+
+    console.log(`[story-iter] done sessionId=${sessionId} htmlLen=${cleanHtml.length}`);
+    await db.update(sessions).set({ storyStatus: 'ready', storyHtml: cleanHtml }).where(eq(sessions.id, sessionId));
+  } catch (err: any) {
+    console.error('[story-iter] failed:', err?.message ?? err);
     await db.update(sessions).set({ storyStatus: 'failed' }).where(eq(sessions.id, sessionId));
   }
 }
