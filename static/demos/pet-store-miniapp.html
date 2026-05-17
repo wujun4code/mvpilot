@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>宠友 · 宠物店预约平台</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:grid;place-items:center;min-height:100vh;padding:10px}
+.phone{width:375px;height:812px;background:#fff;border-radius:40px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.15);position:relative;display:flex;flex-direction:column}
+.status-bar{height:44px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:600;flex-shrink:0}
+.header{height:44px;background:#ff9500;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:600;position:relative;flex-shrink:0}
+.header .back{position:absolute;left:12px;font-size:20px;cursor:pointer;display:none}
+.header .back.show{display:block}
+.pages{flex:1;position:relative;overflow:hidden}
+.page{position:absolute;inset:0;overflow-y:auto;padding:12px 16px;display:none;-webkit-overflow-scrolling:touch}
+.page.active{display:block}
+
+/* Store card */
+.store-card{background:#fff;border-radius:12px;margin-bottom:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;border:1px solid #eee}
+.store-card:active{background:#f8f8f8}
+.store-top{display:flex;gap:12px}
+.store-avatar{width:56px;height:56px;border-radius:10px;display:grid;place-items:center;color:#fff;font-size:22px;flex-shrink:0}
+.store-info{flex:1}
+.store-name{font-size:16px;font-weight:700;margin-bottom:3px}
+.store-tags{display:flex;gap:5px;margin-bottom:3px;flex-wrap:wrap}
+.store-tag{padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.store-tag.tag-green{background:#ebf9f1;color:#07c160}
+.store-tag.tag-blue{background:#e8f4ff;color:#007aff}
+.store-tag.tag-orange{background:#fff4e8;color:#ff9500}
+.store-rating{font-size:13px;color:#666}
+.store-rating .stars{color:#ff9500}
+.store-addr{font-size:12px;color:#999;margin-top:3px}
+.store-services{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.service-tag{padding:5px 10px;border-radius:14px;border:1px solid #ff9500;color:#ff9500;font-size:12px;font-weight:600;background:#fff}
+
+/* Store detail */
+.store-banner{height:180px;border-radius:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;color:#fff;margin-bottom:12px;position:relative;overflow:hidden}
+.store-banner .banner-bg{position:absolute;inset:0;opacity:.3}
+.store-banner h2{font-size:22px;position:relative;z-index:1;margin-bottom:4px}
+.store-banner p{font-size:13px;position:relative;z-index:1;opacity:.9}
+.store-info-row{display:flex;gap:8px;margin-bottom:14px;font-size:13px;color:#666;flex-wrap:wrap}
+.store-info-row span{background:#f5f5f5;padding:6px 10px;border-radius:8px}
+.service-list{}
+.service-item{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #f0f0f0}
+.service-item:last-child{border-bottom:0}
+.service-item-left{}
+.service-item-name{font-size:15px;font-weight:600}
+.service-item-dur{font-size:12px;color:#999;margin-top:2px}
+.service-item-price{color:#ff9500;font-weight:700;font-size:17px}
+.service-item .book-btn{padding:7px 14px;border-radius:18px;background:#ff9500;color:#fff;border:0;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0}
+.service-item .book-btn:active{background:#e08600}
+
+/* Booking */
+.booking-form{padding:8px 0}
+.form-group{margin-bottom:14px}
+.form-label{font-size:14px;font-weight:600;margin-bottom:6px;color:#333}
+.form-input{width:100%;padding:11px 13px;border-radius:10px;border:1px solid #ddd;font-size:15px;outline:0}
+.form-input:focus{border-color:#ff9500}
+.time-slots{display:flex;flex-wrap:wrap;gap:7px}
+.time-slot{padding:9px 14px;border-radius:18px;border:1px solid #ddd;font-size:13px;cursor:pointer;background:#fff}
+.time-slot.active{background:#ff9500;color:#fff;border-color:#ff9500}
+.time-slot:active{opacity:.8}
+.submit-btn{width:100%;padding:14px;border-radius:25px;background:#ff9500;color:#fff;border:0;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px}
+.submit-btn:active{background:#e08600}
+.summary-row{display:flex;justify-content:space-between;padding:10px 0;font-size:16px}
+.summary-row .price{color:#ff9500;font-weight:700;font-size:20px}
+
+/* TabBar */
+.tabbar{height:64px;background:#fff;display:flex;border-top:1px solid #eee;flex-shrink:0;padding-bottom:8px}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:#999;cursor:pointer;gap:2px}
+.tab-item .icon{font-size:20px}
+.tab-item.active{color:#ff9500}
+
+/* Toast */
+.toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:18px 28px;border-radius:14px;font-size:15px;z-index:100;display:none;text-align:center;line-height:1.5;max-width:280px}
+.toast.show{display:block;animation:fadeIn .25s}
+
+/* Badge */
+.search-bar{display:flex;gap:8px;margin-bottom:14px}
+.search-bar input{flex:1;padding:10px 14px;border-radius:20px;border:1px solid #ddd;font-size:14px;outline:0;background:#f9f9f9}
+.search-bar input:focus{border-color:#ff9500}
+.search-bar .filter-btn{padding:10px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:14px}
+.filter-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.filter-tab{padding:6px 14px;border-radius:16px;border:1px solid #ddd;font-size:13px;cursor:pointer;background:#fff;color:#666}
+.filter-tab.active{background:#ff9500;color:#fff;border-color:#ff9500}
+.page-title{font-size:16px;font-weight:700;margin-bottom:12px}
+
+@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(.9)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.page::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+<div class="phone" id="app">
+  <div class="status-bar">
+    <span>12:30</span>
+    <span>📶 📶 🔋</span>
+  </div>
+  <div class="header">
+    <span class="back" id="backBtn" onclick="goHome()">‹</span>
+    宠友
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="pages">
+    <!-- Tab 0: Home -->
+    <div class="page active" id="page-home">
+      <div class="search-bar">
+        <input type="text" placeholder="搜索宠物店或服务..." value="宠物洗澡">
+        <div class="filter-btn">🔍</div>
+      </div>
+      <div class="filter-tabs">
+        <span class="filter-tab active" onclick="selectFilter(this)">全部</span>
+        <span class="filter-tab" onclick="selectFilter(this)">洗澡</span>
+        <span class="filter-tab" onclick="selectFilter(this)">美容</span>
+        <span class="filter-tab" onclick="selectFilter(this)">寄养</span>
+        <span class="filter-tab" onclick="selectFilter(this)">医疗</span>
+      </div>
+      <div style="font-size:13px;color:#999;margin-bottom:12px">附近 · 共 8 家店</div>
+      <div class="store-card" onclick="openStore('汪星人宠物生活馆','#07c160')">
+        <div class="store-top">
+          <div class="store-avatar" style="background:linear-gradient(135deg,#07c160,#00994d)">🐕</div>
+          <div class="store-info">
+            <div class="store-name">汪星人宠物生活馆</div>
+            <div class="store-tags"><span class="store-tag tag-green">洗美</span><span class="store-tag tag-orange">评分最高</span></div>
+            <div class="store-rating"><span class="stars">★★★★★</span> 4.9 · 326 单</div>
+            <div class="store-addr">西湖区文三路 128 号 · 1.2km</div>
+          </div>
+        </div>
+        <div class="store-services">
+          <span class="service-tag">精洗 ¥88</span>
+          <span class="service-tag">美容 ¥158</span>
+          <span class="service-tag">药浴 ¥128</span>
+        </div>
+      </div>
+      <div class="store-card" onclick="openStore('喵星人宠咖','#ff6b00')">
+        <div class="store-top">
+          <div class="store-avatar" style="background:linear-gradient(135deg,#ff9500,#ff6b00)">🐱</div>
+          <div class="store-info">
+            <div class="store-name">喵星人宠咖</div>
+            <div class="store-tags"><span class="store-tag tag-green">洗美</span><span class="store-tag tag-blue">猫专营</span></div>
+            <div class="store-rating"><span class="stars">★★★★☆</span> 4.7 · 218 单</div>
+            <div class="store-addr">上城区解放路 56 号 · 2.5km</div>
+          </div>
+        </div>
+        <div class="store-services">
+          <span class="service-tag">猫咪精洗 ¥98</span>
+          <span class="service-tag">造型 ¥168</span>
+        </div>
+      </div>
+      <div class="store-card" onclick="openStore('宠物之家生活馆','#6366f1')">
+        <div class="store-top">
+          <div class="store-avatar" style="background:linear-gradient(135deg,#6366f1,#4338ca)">🐾</div>
+          <div class="store-info">
+            <div class="store-name">宠物之家生活馆</div>
+            <div class="store-tags"><span class="store-tag tag-green">洗美</span><span class="store-tag tag-blue">连锁</span></div>
+            <div class="store-rating"><span class="stars">★★★★☆</span> 4.6 · 178 单</div>
+            <div class="store-addr">拱墅区湖墅南路 89 号 · 3.1km</div>
+          </div>
+        </div>
+        <div class="store-services">
+          <span class="service-tag">快速洗 ¥49</span>
+          <span class="service-tag">造型 ¥128</span>
+          <span class="service-tag">寄养 ¥80/天</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 1: Orders -->
+    <div class="page" id="page-orders">
+      <div class="page-title">我的预约</div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid #eee;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:600">汪星人宠物生活馆</span><span style="color:#ff9500;font-size:13px;font-weight:600">待服务</span></div>
+        <div style="font-size:14px;color:#333">🐕 标准精洗 · 球球</div>
+        <div style="font-size:12px;color:#999">2026-05-18 10:30</div>
+        <div style="color:#ff9500;font-weight:700;margin-top:6px">¥88</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button style="flex:1;padding:8px;border-radius:18px;border:1px solid #ff9500;background:#fff;color:#ff9500;font-size:12px;font-weight:600;cursor:pointer">取消</button>
+          <button style="flex:1;padding:8px;border-radius:18px;background:#ff9500;color:#fff;border:0;font-size:12px;font-weight:600;cursor:pointer">联系商家</button>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid #eee">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:600">喵星人宠咖</span><span style="color:#999;font-size:13px">已完成</span></div>
+        <div style="font-size:14px;color:#333">✂️ 美容造型 · 咪咪</div>
+        <div style="font-size:12px;color:#999">2026-05-15 14:30</div>
+        <div style="color:#ff9500;font-weight:700;margin-top:6px">¥168</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button style="flex:1;padding:8px;border-radius:18px;border:1px solid #999;background:#fff;color:#666;font-size:12px;font-weight:600;cursor:pointer">评价</button>
+          <button style="flex:1;padding:8px;border-radius:18px;background:#ff9500;color:#fff;border:0;font-size:12px;font-weight:600;cursor:pointer">再来一单</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Store Detail -->
+    <div class="page" id="page-store">
+      <div class="store-banner" id="storeBanner" style="background:linear-gradient(135deg,#07c160,#00994d)">
+        <div class="banner-bg" style="background:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2220%22 cy=%2230%22 r=%223%22 fill=%22white%22 opacity=%22.1%22/><circle cx=%2270%22 cy=%2250%22 r=%225%22 fill=%22white%22 opacity=%22.1%22/><circle cx=%2240%22 cy=%2280%22 r=%222%22 fill=%22white%22 opacity=%22.1%22/></svg>')"></div>
+        <h2 id="storeTitle">汪星人宠物生活馆</h2>
+        <p>★★★★★ 4.9 · 124 条评价</p>
+      </div>
+      <div class="store-info-row">
+        <span>📍 西湖区文三路 128 号</span>
+        <span>📞 0571-88881234</span>
+        <span>🕐 09:00-21:00</span>
+      </div>
+      <div class="service-list">
+        <div class="service-item">
+          <div class="service-item-left">
+            <div class="service-item-name">🐕 标准精洗</div>
+            <div class="service-item-dur">约 45 分钟 · 含洗澡吹干剪指甲</div>
+          </div>
+          <div style="text-align:right">
+            <div class="service-item-price">¥88</div>
+            <button class="book-btn" onclick="startBooking('标准精洗',88)">预约</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="service-item-left">
+            <div class="service-item-name">✂️ 美容造型</div>
+            <div class="service-item-dur">约 90 分钟 · 含修剪造型 SPA</div>
+          </div>
+          <div style="text-align:right">
+            <div class="service-item-price">¥158</div>
+            <button class="book-btn" onclick="startBooking('美容造型',158)">预约</button>
+          </div>
+        </div>
+        <div class="service-item">
+          <div class="service-item-left">
+            <div class="service-item-name">🧼 药浴护理</div>
+            <div class="service-item-dur">约 60 分钟 · 皮肤病药浴护理</div>
+          </div>
+          <div style="text-align:right">
+            <div class="service-item-price">¥128</div>
+            <button class="book-btn" onclick="startBooking('药浴护理',128)">预约</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Booking -->
+    <div class="page" id="page-booking">
+      <div class="booking-form">
+        <div class="form-group">
+          <div class="form-label">服务项目</div>
+          <div style="padding:11px 13px;background:#f9f9f9;border-radius:10px;font-size:15px;font-weight:600" id="bookingService">标准精洗</div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">宠物名字</div>
+          <input class="form-input" type="text" placeholder="请输入宠物名字" value="球球" id="petName">
+        </div>
+        <div class="form-group">
+          <div class="form-label">选择日期</div>
+          <input class="form-input" type="date" id="bookingDate">
+        </div>
+        <div class="form-group">
+          <div class="form-label">选择时间</div>
+          <div class="time-slots">
+            <span class="time-slot" onclick="selectTime(this)">09:00</span>
+            <span class="time-slot" onclick="selectTime(this)">09:30</span>
+            <span class="time-slot active" onclick="selectTime(this)">10:00</span>
+            <span class="time-slot" onclick="selectTime(this)">10:30</span>
+            <span class="time-slot" onclick="selectTime(this)">11:00</span>
+            <span class="time-slot" onclick="selectTime(this)">14:00</span>
+            <span class="time-slot" onclick="selectTime(this)">14:30</span>
+            <span class="time-slot" onclick="selectTime(this)">15:00</span>
+            <span class="time-slot" onclick="selectTime(this)">16:00</span>
+            <span class="time-slot" onclick="selectTime(this)">16:30</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">备注（选填）</div>
+          <input class="form-input" type="text" placeholder="如：狗狗比较胆小请温柔" id="bookingNote">
+        </div>
+        <div class="summary-row">
+          <span>合计</span>
+          <span class="price" id="bookingTotal">¥88</span>
+        </div>
+        <button class="submit-btn" onclick="submitBooking()">确认预约</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab-item active" onclick="switchTab(0,this)">
+      <span class="icon">🏠</span><span>首页</span>
+    </div>
+    <div class="tab-item" onclick="switchTab(1,this)">
+      <span class="icon">📋</span><span>预约</span>
+    </div>
+    <div class="tab-item" onclick="switchTab(2,this)">
+      <span class="icon">❤️</span><span>收藏</span>
+    </div>
+    <div class="tab-item" onclick="switchTab(3,this)">
+      <span class="icon">👤</span><span>我的</span>
+    </div>
+  </div>
+</div>
+<script>
+let currentColor='#07c160', currentName='汪星人宠物生活馆', selectedTime='10:00', bookingService='标准精洗', bookingPrice=88;
+function showToast(msg, duration=1500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),duration)}
+function switchTab(idx,el){
+  document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active'));el.classList.add('active')
+  const m={0:'page-home',1:'page-orders',2:'page-home',3:'page-home'};
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  document.getElementById(m[idx]).classList.add('active')
+  document.getElementById('backBtn').classList.remove('show')
+}
+function selectFilter(el){document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active')}
+function openStore(name,color){
+  currentName=name;currentColor=color;
+  const b=document.getElementById('storeBanner');b.style.background=`linear-gradient(135deg,${color},${color}cc)`;
+  document.getElementById('storeTitle').textContent=name;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  document.getElementById('page-store').classList.add('active')
+  document.getElementById('backBtn').classList.add('show')
+}
+function goHome(){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  document.getElementById('page-home').classList.add('active')
+  document.getElementById('backBtn').classList.remove('show')
+}
+function startBooking(service,price){
+  bookingService=service;bookingPrice=price;
+  document.getElementById('bookingService').textContent=service;document.getElementById('bookingTotal').textContent='¥'+price;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  document.getElementById('page-booking').classList.add('active')
+  document.getElementById('backBtn').classList.add('show')
+  const d=new Date();d.setDate(d.getDate()+1);document.getElementById('bookingDate').value=d.toISOString().split('T')[0]
+}
+function selectTime(el){document.querySelectorAll('.time-slot').forEach(t=>t.classList.remove('active'));el.classList.add('active');selectedTime=el.textContent}
+function submitBooking(){
+  const pet=document.getElementById('petName').value||'未命名',date=document.getElementById('bookingDate').value,note=document.getElementById('bookingNote').value
+  showToast(`✅ 预约成功！\n${bookingService} · ${pet}\n${date} ${selectedTime}`);
+  setTimeout(()=>{document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-home').classList.add('active');document.getElementById('backBtn').classList.remove('show')},2000)
+}
+</script>
+</body>
+</html>
