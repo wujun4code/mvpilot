@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>头马会议 · 现场评分</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a2e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:grid;place-items:center;min-height:100vh;padding:10px}
+.phone{width:375px;height:812px;background:linear-gradient(180deg,#16213e,#0f3460);border-radius:40px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.3);display:flex;flex-direction:column}
+.status-bar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;color:rgba(255,255,255,.35);flex-shrink:0}
+.header{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;color:#e94560;font-size:16px;font-weight:800;flex-shrink:0}
+.pages{flex:1;position:relative;overflow:hidden}
+.page{position:absolute;inset:0;overflow-y:auto;padding:12px 14px;display:none}
+.page.active{display:block}
+.page::-webkit-scrollbar{display:none}
+
+/* Role select */
+.rs-title{font-size:18px;font-weight:800;color:#fff;text-align:center;margin-bottom:4px;padding-top:40px}
+.rs-sub{font-size:13px;color:rgba(255,255,255,.35);text-align:center;margin-bottom:18px}
+.rs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rs-btn{padding:20px 16px;border-radius:14px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)}
+.rs-btn:active{opacity:.7}.rs-btn.selected{border-color:#e94560;background:rgba(233,69,96,.1)}
+.rs-btn .icon{font-size:32px;margin-bottom:6px}
+.rs-btn .nm{font-size:15px;font-weight:700;color:#fff}
+.rs-btn .dc{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px}
+.enter-btn{width:100%;padding:14px;border-radius:25px;background:#e94560;color:#fff;border:0;font-size:16px;font-weight:700;cursor:pointer;margin-top:16px}
+.enter-btn:active{opacity:.8}
+
+/* Now playing */
+.now-card{background:rgba(255,255,255,.06);border-radius:16px;padding:24px;text-align:center;border:1px solid rgba(255,255,255,.08);margin-bottom:12px}
+.now-lbl{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:6px}
+.now-nm{font-size:24px;font-weight:900;color:#fff;margin-bottom:2px}
+.now-prj{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:10px}
+.now-timer{font-size:36px;font-weight:900;color:#e94560;margin-bottom:10px;font-variant-numeric:tabular-nums}
+.now-st{display:inline-block;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700}
+.st-speaking{background:rgba(233,69,96,.15);color:#e94560}
+.st-done{background:rgba(255,214,10,.12);color:#ffd60a}
+.st-wait{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)}
+
+/* Timer controls */
+.tc{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.tc-btn{padding:14px;border-radius:12px;border:0;font-size:14px;font-weight:700;cursor:pointer;grid-column:span 2}
+.tc-btn:active{opacity:.8}
+.tc-end{background:rgba(255,214,10,.12);color:#ffd60a;border:1px solid rgba(255,214,10,.2);grid-column:span 1}
+.tc-start{background:rgba(0,230,118,.12);color:#00e676;border:1px solid rgba(0,230,118,.2);grid-column:span 1}
+.tc-next{background:#e94560;color:#fff}
+
+/* Score */
+.sc-panel{background:rgba(255,255,255,.06);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.08);margin-bottom:10px}
+.sc-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.sc-hdr .lb{font-size:13px;color:rgba(255,255,255,.45);font-weight:600}
+.sc-badge{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.sc-badge.t{background:rgba(0,230,118,.12);color:#00e676}
+.sc-badge.a{background:rgba(255,214,10,.12);color:#ffd60a}
+.sc-badge.g{background:rgba(233,69,96,.12);color:#e94560}
+
+/* Timer options */
+.three-opts{display:flex;gap:8px}
+.three-opt{flex:1;padding:16px 8px;border-radius:12px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)}
+.three-opt:active{opacity:.7}
+.three-opt .ic{font-size:24px}
+.three-opt .lb{font-size:14px;font-weight:700;color:#fff;margin-top:4px}
+.three-opt .sub{font-size:10px;color:rgba(255,255,255,.35);margin-top:2px}
+.three-opt.sel-green{border-color:#00e676;background:rgba(0,230,118,.12)}
+.three-opt.sel-yellow{border-color:#ffd60a;background:rgba(255,214,10,.12)}
+.three-opt.sel-red{border-color:#e94560;background:rgba(233,69,96,.12)}
+
+/* Ah */
+.ah-row{display:flex;align-items:center;gap:12px;justify-content:center}
+.ah-num{font-size:32px;font-weight:900;color:#fff;width:60px;text-align:center}
+.ah-btn{width:40px;height:40px;border-radius:50%;border:0;font-size:20px;cursor:pointer;display:grid;place-items:center}
+.ah-btn.m{background:rgba(255,255,255,.08);color:#fff}
+.ah-btn.p{background:#e94560;color:#fff}
+
+/* Grammar */
+.g-stars{display:flex;gap:6px;justify-content:center}
+.g-star{width:38px;height:38px;border-radius:8px;display:grid;place-items:center;font-size:16px;cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4)}
+.g-star.act{background:rgba(233,69,96,.15);border-color:#e94560;color:#e94560}
+
+.sc-sub{width:100%;padding:12px;border-radius:20px;background:#e94560;color:#fff;border:0;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px}
+.sc-sub:disabled{opacity:.3;cursor:default}
+
+/* History */
+.his-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)}
+.his-pos{width:20px;text-align:center;font-size:14px;font-weight:900}
+.his-gold{color:#ffd700}.his-silver{color:#c0c0c0}.his-bronze{color:#cd7f32}
+.his-name{flex:1;font-size:13px;font-weight:600;color:#fff}
+.his-sc{font-size:11px;color:rgba(255,255,255,.35);text-align:right;line-height:1.5}
+.toast{position:absolute;top:50%;left:50%;z-index:100;display:none;padding:20px 30px;border-radius:16px;background:rgba(0,0,0,.85);color:#fff;text-align:center;line-height:1.5;font-size:16px;font-weight:700;pointer-events:none}
+.toast.show{display:block;animation:pop .3s}
+@keyframes pop{from{transform:translate(-50%,-50%) scale(.5);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.tabbar{height:64px;background:rgba(22,33,62,.95);display:flex;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;padding-bottom:8px}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,.3);cursor:pointer;gap:2px}
+.tab-item .ic{font-size:18px}
+.tab-item.act{color:#e94560}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status-bar"><span>19:30</span><span>📶 🔋</span></div>
+  <div class="header"><span>🎙 TMC</span><span id="hdrRole" style="font-size:12px;font-weight:400;color:rgba(255,255,255,.4)"></span></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="pages">
+    <!-- Role selection -->
+    <div class="page active" id="page-role">
+      <div class="rs-title">📋 选择身份</div>
+      <div class="rs-sub">第 386 次 · 杭州头马</div>
+      <div class="rs-grid">
+        <div class="rs-btn" onclick="pickRole('timer')"><div class="icon">⏱</div><div class="nm">时间官</div><div class="dc">控制演讲时间</div></div>
+        <div class="rs-btn" onclick="pickRole('ah')"><div class="icon">🔇</div><div class="nm">坠词官</div><div class="dc">记录坠词次数</div></div>
+        <div class="rs-btn" onclick="pickRole('grammar')"><div class="icon">📝</div><div class="nm">语法官</div><div class="dc">语言语法评分</div></div>
+        <div class="rs-btn" onclick="pickRole('speaker')"><div class="icon">🎤</div><div class="nm">参会者</div><div class="dc">查看进度结果</div></div>
+      </div>
+      <button class="enter-btn" onclick="enterMeeting()">✅ 进入会议</button>
+    </div>
+
+    <!-- Meeting room -->
+    <div class="page" id="page-mtg">
+      <!-- Current speaker -->
+      <div class="now-card">
+        <div class="now-lbl">🎤 当前演讲</div>
+        <div class="now-nm" id="curName">—</div>
+        <div class="now-prj" id="curProj">等待开始</div>
+        <div class="now-timer" id="curTimer">00:00</div>
+        <div><span class="now-st st-wait" id="curStatus">⏸ 未开始</span></div>
+      </div>
+
+      <!-- Timer controls -->
+      <div id="timerCtrls" style="display:none">
+        <div class="tc">
+          <button class="tc-btn tc-start" id="btnStart" onclick="startSpeech()">▶ 开始演讲</button>
+          <button class="tc-btn tc-end" id="btnEnd" onclick="endSpeech()">⏹ 结束演讲</button>
+          <button class="tc-btn tc-next" onclick="nextSpeaker()">➡️ 下一位演讲者</button>
+        </div>
+      </div>
+
+      <!-- Score panel -->
+      <div class="sc-panel" id="scorePanel">
+        <div class="sc-hdr"><span class="lb" id="scLabel">等待评分</span><span class="sc-badge" id="scBadge">⏱</span></div>
+        <!-- Timer inputs -->
+        <div id="scTimer">
+          <div class="three-opts">
+            <div class="three-opt" onclick="pickTimer('green')"><div class="ic">🟢</div><div class="lb">绿区</div><div class="sub">4:30-5:30</div></div>
+            <div class="three-opt" onclick="pickTimer('yellow')"><div class="ic">🟡</div><div class="lb">黄区</div><div class="sub">5:30-6:00</div></div>
+            <div class="three-opt" onclick="pickTimer('red')"><div class="ic">🔴</div><div class="lb">红区</div><div class="sub">&gt;6:00</div></div>
+          </div>
+        </div>
+        <!-- Ah inputs -->
+        <div id="scAh" style="display:none">
+          <div class="ah-row">
+            <button class="ah-btn m" onclick="adjAh(-1)">−</button>
+            <div class="ah-num" id="ahNum">0</div>
+            <button class="ah-btn p" onclick="adjAh(1)">+</button>
+          </div>
+          <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.35);margin-top:6px">嗯、啊、那个、就是说</div>
+        </div>
+        <!-- Grammar inputs -->
+        <div id="scGrammar" style="display:none">
+          <div class="g-stars">
+            <div class="g-star" onclick="pickGrammar(1)">1</div>
+            <div class="g-star" onclick="pickGrammar(2)">2</div>
+            <div class="g-star" onclick="pickGrammar(3)">3</div>
+            <div class="g-star" onclick="pickGrammar(4)">4</div>
+            <div class="g-star act" onclick="pickGrammar(5)">5</div>
+          </div>
+        </div>
+        <button class="sc-sub" id="scSubmit" onclick="submitScore()" disabled>📨 提交评分</button>
+      </div>
+
+      <!-- History -->
+      <div style="font-size:14px;font-weight:700;color:#fff;margin:0 0 8px">📋 已完成</div>
+      <div id="histList"></div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab-item act" onclick="goMeeting()"><span class="ic">🎤</span><span>会议</span></div>
+    <div class="tab-item" onclick="showToast('🏆 排名开发中')"><span class="ic">🏆</span><span>排名</span></div>
+    <div class="tab-item" onclick="showToast('👤 用户中心开发中')"><span class="ic">👤</span><span>我的</span></div>
+  </div>
+</div>
+
+<script>
+const SPEAKERS = [
+  {name:'张明', proj:'L1P2 · 我的第一份工作'},
+  {name:'王芳', proj:'L2P1 · 有效反馈的艺术'},
+  {name:'李伟', proj:'L3P1 · 用故事打动人'},
+  {name:'陈静', proj:'L1P1 · 破冰演讲'},
+  {name:'赵雪', proj:'L2P2 · 条理分明'},
+  {name:'刘洋', proj:'L3P2 · 幽默的力量'}
+];
+const history = []; // {name, timer, ah, grammar, total}
+let myRole = null;
+let speakerIdx = 0;
+let speaking = false;
+let timerVal = null;
+let ahVal = 0;
+let grammarVal = 5;
+let timerInterval = null;
+let seconds = 0;
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1500);
+}
+
+function pickRole(r){
+  myRole=r;
+  document.querySelectorAll('.rs-btn').forEach(b=>b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+}
+
+function enterMeeting(){
+  if(!myRole){toast('请先选择身份');return;}
+  document.getElementById('hdrRole').textContent = ({timer:'时间官',ah:'坠词官',grammar:'语法官',speaker:'参会者'})[myRole];
+  document.getElementById('timerCtrls').style.display = myRole==='timer'?'block':'none';
+  const badges={timer:'sc-badge t',ah:'sc-badge a',grammar:'sc-badge g'};
+  document.getElementById('scBadge').className='sc-badge '+(badges[myRole]||'');
+  document.getElementById('scBadge').textContent = ({timer:'⏱ 时间官',ah:'🔇 坠词官',grammar:'📝 语法官',speaker:'👀 观摩'})[myRole];
+  document.getElementById('scTimer').style.display = myRole==='timer'?'block':'none';
+  document.getElementById('scAh').style.display = myRole==='ah'?'block':'none';
+  document.getElementById('scGrammar').style.display = myRole==='grammar'?'block':'none';
+  if(myRole==='speaker'||myRole==='speaker') document.getElementById('scorePanel').style.display='none';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-mtg').classList.add('active');
+  updateUI();
+}
+
+function updateUI(){
+  const s = SPEAKERS[speakerIdx];
+  document.getElementById('curName').textContent = speaking ? s.name : '—';
+  document.getElementById('curProj').textContent = speaking ? s.proj : '等待开始';
+  document.getElementById('curStatus').textContent = speaking ? '🎙 演讲中' : '⏸ 未开始';
+  document.getElementById('curStatus').className = 'now-st '+(speaking?'st-speaking':'st-wait');
+  // Enable/disable submit based on speech ended
+  document.getElementById('scSubmit').disabled = speaking;
+  document.getElementById('scLabel').textContent = speaking ? '⏳ 演讲结束后可评分' : '✅ 可以评分';
+}
+
+// Timer controls
+function startSpeech(){
+  if(speaking){toast('已有演讲在进行');return;}
+  if(speakerIdx>=SPEAKERS.length){toast('所有演讲已完成');return;}
+  speaking=true; seconds=0;
+  startTimer();
+  updateUI();
+  toast(`▶ ${SPEAKERS[speakerIdx].name} 开始演讲`);
+}
+
+function endSpeech(){
+  if(!speaking){toast('当前没有演讲');return;}
+  speaking=false;
+  stopTimer();
+  updateUI();
+  toast('⏹ 演讲结束，评委可以评分');
+}
+
+function nextSpeaker(){
+  if(speaking){toast('请先结束当前演讲');return;}
+  if(history.length<=speakerIdx&&speakerIdx>0&&!speaking){
+    // If last speech not scored, still allow moving on
+  }
+  speakerIdx++;
+  if(speakerIdx>=SPEAKERS.length){toast('🎉 所有演讲已完成！');return;}
+  timerVal=null; ahVal=0; grammarVal=5;
+  document.getElementById('ahNum').textContent='0';
+  document.querySelectorAll('.g-star').forEach((el,i)=>el.classList.toggle('act',i>=4));
+  document.querySelectorAll('.three-opt').forEach(o=>o.classList.remove('sel-green','sel-yellow','sel-red'));
+  seconds=0; document.getElementById('curTimer').textContent='00:00';
+  updateUI();
+  toast(`➡️ 下一位：${SPEAKERS[speakerIdx].name}`);
+}
+
+function startTimer(){
+  stopTimer();
+  timerInterval = setInterval(()=>{
+    seconds++;
+    const m=String(Math.floor(seconds/60)).padStart(2,'0');
+    const s=String(seconds%60).padStart(2,'0');
+    document.getElementById('curTimer').textContent=m+':'+s;
+    // Color change based on time
+    const el=document.getElementById('curTimer');
+    if(seconds>=390) el.style.color='#e94560'; // red >6:30
+    else if(seconds>=330) el.style.color='#ffd60a'; // yellow 5:30-6:30
+    else el.style.color='#00e676'; // green
+  },1000);
+}
+
+function stopTimer(){
+  if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
+}
+
+// Judge inputs
+function pickTimer(v){
+  if(speaking){toast('演讲结束后再评分');return;}
+  timerVal=v;
+  document.querySelectorAll('.three-opt').forEach(o=>o.classList.remove('sel-green','sel-yellow','sel-red'));
+  event.currentTarget.classList.add('sel-'+v);
+}
+
+function adjAh(d){
+  if(speaking){toast('演讲结束后再评分');return;}
+  ahVal=Math.max(0,Math.min(99,ahVal+d));
+  document.getElementById('ahNum').textContent=ahVal;
+}
+
+function pickGrammar(v){
+  if(speaking){toast('演讲结束后再评分');return;}
+  grammarVal=v;
+  document.querySelectorAll('.g-star').forEach((el,i)=>el.classList.toggle('act',i<v));
+}
+
+function submitScore(){
+  if(speaking){toast('⏳ 演讲还在进行中');return;}
+  const s=SPEAKERS[speakerIdx];
+  if(!s||history.find(h=>h.name===s.name)){toast('已评分过了');return;}
+  
+  if(myRole==='timer'&&!timerVal){toast('请选择时间区域');return;}
+  
+  const tLabel={green:'绿区',yellow:'黄区',red:'红区'};
+  const timerStr = myRole==='timer'?tLabel[timerVal]:'—';
+  const ahStr = myRole==='ah'?ahVal+'词':'—';
+  const grammarStr = myRole==='grammar'?grammarVal+'/5':'—';
+  
+  // Simple composite score
+  let total = 0;
+  if(myRole==='timer') total = timerVal==='green'?9:timerVal==='yellow'?6:3;
+  else if(myRole==='ah') total = Math.max(1,10-ahVal);
+  else total = grammarVal*2;
+  
+  history.push({
+    name: s.name,
+    timer:timerStr, ah:ahStr, grammar:grammarStr,
+    total: total.toFixed(1)
+  });
+  
+  renderHistory();
+  toast(`✅ 已为 ${s.name} 评分`);
+  
+  // Reset inputs
+  timerVal=null; ahVal=0; grammarVal=5;
+  document.querySelectorAll('.three-opt').forEach(o=>o.classList.remove('sel-green','sel-yellow','sel-red'));
+  document.getElementById('ahNum').textContent='0';
+  document.querySelectorAll('.g-star').forEach((el,i)=>el.classList.toggle('act',i>=4));
+}
+
+function renderHistory(){
+  const list = document.getElementById('histList');
+  list.innerHTML = history.map((h,i)=>{
+    const medals=['🥇','🥈','🥉'];
+    const cls=['his-gold','his-silver','his-bronze'];
+    const m=i<3?`<span class="his-pos ${cls[i]}">${medals[i]}</span>`:`<span class="his-pos">${i+1}</span>`;
+    return `<div class="his-item">${m}<div class="his-name">${h.name}</div><div class="his-sc">⏱${h.timer} · 🔇${h.ah} · 📝${h.grammar}</div></div>`;
+  }).join('');
+}
+
+function goMeeting(){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-mtg').classList.add('active');
+  document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('act'));
+  document.querySelectorAll('.tab-item')[0].classList.add('act');
+}
+</script>
+</body>
+</html>
