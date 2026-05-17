@@ -3,95 +3,98 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>头马演讲评分</title>
+<title>头马演讲评分 · 评委版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#1a1a2e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:grid;place-items:center;min-height:100vh;padding:10px}
-.phone{width:375px;height:812px;background:linear-gradient(180deg,#16213e,#0f3460);border-radius:40px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.3);position:relative;display:flex;flex-direction:color; /* intentional typo is ignored by browser */;flex-direction:column}
-.phone{flex-direction:column}
-.status-bar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:600;color:rgba(255,255,255,.6);flex-shrink:0}
-.header{height:48px;display:flex;align-items:center;justify-content:center;color:#e94560;font-size:18px;font-weight:800;letter-spacing:-.3px;position:relative;flex-shrink:0}
+.phone{width:375px;height:812px;background:linear-gradient(180deg,#16213e,#0f3460);border-radius:40px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.3);position:relative;display:flex;flex-direction:column}
+.status-bar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:600;color:rgba(255,255,255,.4);flex-shrink:0}
+.header{height:48px;display:flex;align-items:center;justify-content:center;color:#e94560;font-size:17px;font-weight:800;position:relative;flex-shrink:0}
 .header .back{position:absolute;left:14px;font-size:22px;cursor:pointer;display:none;color:#e94560}
 .header .back.show{display:block}
 .pages{flex:1;position:relative;overflow:hidden}
-.page{position:absolute;inset:0;overflow-y:auto;padding:10px 14px;display:none;-webkit-overflow-scrolling:touch}
+.page{position:absolute;inset:0;overflow-y:auto;padding:10px 14px;display:none}
 .page.active{display:block}
 .page::-webkit-scrollbar{display:none}
 
-/* Home - meeting info + speaker list */
 .meeting-card{background:rgba(255,255,255,.06);border-radius:16px;padding:18px;margin-bottom:14px;border:1px solid rgba(255,255,255,.08)}
-.meeting-date{font-size:12px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.meeting-date{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-bottom:4px;text-transform:uppercase}
 .meeting-title{font-size:20px;font-weight:800;color:#fff;margin-bottom:2px}
-.meeting-sub{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:12px}
-.meeting-stats{display:flex;gap:12px}
-.meeting-stat{background:rgba(233,69,96,.12);border-radius:10px;padding:10px 14px;flex:1;text-align:center}
-.meeting-stat-num{font-size:20px;font-weight:900;color:#e94560}
-.meeting-stat-label{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px}
+.meeting-sub{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:12px}
 
-.section-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.role-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.role-card{padding:14px 8px;border-radius:12px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)}
+.role-card.active{border-color:#e94560;background:rgba(233,69,96,.1)}
+.role-card:active{opacity:.7}
+.role-icon{font-size:24px;margin-bottom:4px}
+.role-name{font-size:12px;font-weight:700;color:#fff}
+.role-desc{font-size:10px;color:rgba(255,255,255,.35);margin-top:2px}
 
-/* Speaker cards */
 .speaker-card{background:rgba(255,255,255,.06);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;border:1px solid rgba(255,255,255,.06)}
 .speaker-card:active{background:rgba(255,255,255,.1)}
 .speaker-top{display:flex;align-items:center;gap:12px}
-.speaker-avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:20px;flex-shrink:0}
+.speaker-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:18px;flex-shrink:0}
 .speaker-info{flex:1}
 .speaker-name{font-size:15px;font-weight:700;color:#fff}
-.speaker-project{font-size:12px;color:rgba(255,255,255,.4);margin-top:2px}
-.speaker-rank{font-size:13px;font-weight:700;flex-shrink:0;text-align:right}
-.speaker-rank .num{font-size:22px}
-.speaker-rank .label{font-size:10px;color:rgba(255,255,255,.3);display:block}
+.speaker-project{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
+.speaker-status{font-size:11px;padding:3px 10px;border-radius:10px;flex-shrink:0}
+.status-pending{background:rgba(255,255,255,.06);color:rgba(255,255,255,.3)}
+.status-done{background:rgba(233,69,96,.15);color:#e94560}
 
-/* Score indicator mini */
-.speaker-score-bar{margin-top:8px;display:flex;gap:4px}
-.s-bar{height:4px;border-radius:2px;flex:1}
-.s-bar.filled{background:#e94560}
-.s-bar.empty{background:rgba(255,255,255,.08)}
+.judge-panel{background:rgba(255,255,255,.06);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,.08);margin-bottom:14px}
+.judge-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.judge-role-icon{font-size:28px}
+.judge-role-info{flex:1}
+.judge-role-title{font-size:16px;font-weight:700;color:#fff}
+.judge-role-desc{font-size:12px;color:rgba(255,255,255,.4);margin-top:2px}
 
-/* Score page */
-.score-card{background:rgba(255,255,255,.06);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,.08);margin-bottom:14px}
-.score-speaker{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.score-speaker .avatar{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;font-size:22px}
-.score-speaker .info{flex:1}
-.score-speaker .info h3{font-size:17px;font-weight:700;color:#fff}
-.score-speaker .info p{font-size:12px;color:rgba(255,255,255,.4)}
+/* Timer */
+.timer-options{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.timer-opt{padding:20px 8px;border-radius:14px;text-align:center;cursor:pointer;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)}
+.timer-opt:active{opacity:.7}
+.timer-opt .icon{font-size:32px;margin-bottom:6px}
+.timer-opt .label{font-size:15px;font-weight:700;color:#fff}
+.timer-opt .sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px}
+.timer-opt.green{--c:#00e676}.timer-opt.green.active{border-color:var(--c);background:rgba(0,230,118,.12)}
+.timer-opt.yellow{--c:#ffd60a}.timer-opt.yellow.active{border-color:var(--c);background:rgba(255,214,10,.12)}
+.timer-opt.red{--c:#e94560}.timer-opt.red.active{border-color:var(--c);background:rgba(233,69,96,.12)}
 
-.dimension-group{margin-bottom:16px}
-.dim-label{display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,.7);margin-bottom:6px}
-.dim-label .weight{color:rgba(255,255,255,.3);font-size:12px}
-.dim-slider{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;background:rgba(255,255,255,.1);outline:0}
-.dim-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#e94560;cursor:pointer;box-shadow:0 0 10px rgba(233,69,96,.4)}
-.dim-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#e94560;cursor:pointer;border:0}
-.dim-value{text-align:right;font-size:20px;font-weight:900;color:#e94560;margin-top:2px}
+/* Ah-counter */
+.ah-display{text-align:center;padding:10px;margin-bottom:10px}
+.ah-number{font-size:52px;font-weight:900;color:#fff;line-height:1}
+.ah-input{width:100px;padding:10px;border-radius:14px;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:36px;font-weight:900;text-align:center;outline:0;margin:0 auto;display:block}
+.ah-label{font-size:12px;color:rgba(255,255,255,.4);margin-top:8px}
+.ah-buttons{display:flex;gap:12px;justify-content:center}
+.ah-btn{width:48px;height:48px;border-radius:50%;border:0;font-size:24px;cursor:pointer;display:grid;place-items:center}
+.ah-btn.minus{background:rgba(255,255,255,.08);color:#fff}
+.ah-btn.plus{background:#e94560;color:#fff;box-shadow:0 0 15px rgba(233,69,96,.3)}
+.ah-btn:active{opacity:.7}
 
-.score-total{text-align:center;padding:16px;border-radius:14px;background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.2);margin-bottom:12px}
-.score-total-label{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:2px}
-.score-total-num{font-size:36px;font-weight:900;color:#e94560}
-.score-total-bar{width:100%;height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:10px;overflow:hidden}
-.score-total-fill{height:100%;background:linear-gradient(90deg,#e94560,#ff6b6b);border-radius:2px}
+/* Grammar */
+.grammar-stars{display:flex;gap:8px;justify-content:center}
+.g-star{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:18px;cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5)}
+.g-star.active{background:rgba(233,69,96,.15);border-color:#e94560;color:#e94560}
+.g-star:active{opacity:.7}
+.grammar-input{width:100%;padding:10px 12px;border-radius:10px;border:0;background:rgba(255,255,255,.06);color:#fff;font-size:13px;outline:0;resize:none;font-family:inherit;min-height:60px;margin-top:10px}
+.grammar-input::placeholder{color:rgba(255,255,255,.2)}
 
-.submit-score-btn{width:100%;padding:14px;border-radius:25px;background:#e94560;color:#fff;border:0;font-size:16px;font-weight:700;cursor:pointer}
-.submit-score-btn:active{opacity:.8}
+.submit-btn{width:100%;padding:14px;border-radius:25px;background:#e94560;color:#fff;border:0;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px}
+.submit-btn:active{opacity:.8}
 
-/* Rank page */
-.rank-list{}
+/* Rank */
 .rank-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;margin-bottom:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.06)}
 .rank-pos{width:24px;text-align:center;font-size:16px;font-weight:900}
-.rank-pos.gold{color:#ffd700}
-.rank-pos.silver{color:#c0c0c0}
-.rank-pos.bronze{color:#cd7f32}
-.rank-pos.normal{color:rgba(255,255,255,.3)}
+.rank-pos.gold{color:#ffd700}.rank-pos.silver{color:#c0c0c0}.rank-pos.bronze{color:#cd7f32}.rank-pos.normal{color:rgba(255,255,255,.3)}
 .rank-name{flex:1;font-size:14px;font-weight:600;color:#fff}
-.rank-score{font-size:16px;font-weight:900;color:#e94560}
+.rank-detail{font-size:11px;color:rgba(255,255,255,.35);margin-top:2px}
+.rank-score{font-size:15px;font-weight:900;color:#e94560;text-align:right}
 
-/* Toast */
-.toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;display:none;text-align:center;padding:20px 30px;border-radius:16px;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);color:#fff}
-.toast.show{display:block;animation:popIn .3s cubic-bezier(.34,1.56,.64,1);font-size:16px;font-weight:700;line-height:1.5}
+.toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;display:none;padding:20px 30px;border-radius:16px;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);color:#fff;text-align:center;line-height:1.5}
+.toast.show{display:block;animation:popIn .3s cubic-bezier(.34,1.56,.64,1)}
 @keyframes popIn{from{transform:translate(-50%,-50%) scale(.5);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
 
-/* TabBar */
 .tabbar{height:64px;background:rgba(22,33,62,.95);display:flex;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;padding-bottom:8px}
-.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,.3);cursor:pointer;gap:2px;transition:color .2s}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,.3);cursor:pointer;gap:2px}
 .tab-item .icon{font-size:18px}
 .tab-item.active{color:#e94560}
 </style>
@@ -101,170 +104,138 @@ body{background:#1a1a2e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
   <div class="status-bar"><span>19:30</span><span>📶 🔋</span></div>
   <div class="header">
     <span class="back" id="backBtn" onclick="goHome()">‹</span>
-    TMC SCORE
+    TMC JUDGE
   </div>
   <div class="toast" id="toast"></div>
+
   <div class="pages">
-    <!-- Home: Speaker List -->
+    <!-- Home -->
     <div class="page active" id="page-home">
       <div class="meeting-card">
         <div class="meeting-date">SAT · MAY 17, 2026</div>
         <div class="meeting-title">🏆 第 386 次会议</div>
-        <div class="meeting-sub">杭州头马国际演讲俱乐部</div>
-        <div class="meeting-stats">
-          <div class="meeting-stat"><div class="meeting-stat-num">6</div><div class="meeting-stat-label">备稿演讲</div></div>
-          <div class="meeting-stat"><div class="meeting-stat-num">18</div><div class="meeting-stat-label">已投票</div></div>
-          <div class="meeting-stat"><div class="meeting-stat-num">9.2</div><div class="meeting-stat-label">最高均分</div></div>
+        <div class="meeting-sub">杭州头马国际演讲俱乐部 · 评委台</div>
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,.45);margin-bottom:8px;font-weight:600">选择你的评委角色</div>
+      <div class="role-grid">
+        <div class="role-card active" id="role-timer" onclick="selectRole('timer')">
+          <div class="role-icon">⏱</div><div class="role-name">计时官</div><div class="role-desc">时间控制</div>
+        </div>
+        <div class="role-card" id="role-ah" onclick="selectRole('ah')">
+          <div class="role-icon">🔇</div><div class="role-name">赘词官</div><div class="role-desc">坠词计数</div>
+        </div>
+        <div class="role-card" id="role-grammar" onclick="selectRole('grammar')">
+          <div class="role-icon">📝</div><div class="role-name">语法官</div><div class="role-desc">语言语法</div>
         </div>
       </div>
-      <div class="section-title">🎤 备稿演讲评分</div>
-      <div class="speaker-card" onclick="openScore(0)">
+      <div style="font-size:13px;color:rgba(255,255,255,.45);margin-bottom:10px;font-weight:600">备稿演讲</div>
+      <div class="speaker-card" onclick="openJudge(0)">
         <div class="speaker-top">
           <div class="speaker-avatar" style="background:linear-gradient(135deg,#e94560,#ff6b6b)">张</div>
           <div class="speaker-info">
-            <div class="speaker-name">张明</div>
-            <div class="speaker-project">L1P2 · 我的第一份工作</div>
+            <div class="speaker-name">张明</div><div class="speaker-project">L1P2 · 我的第一份工作</div>
           </div>
-          <div class="speaker-rank"><span class="num" style="color:#ffd700">🥇</span><span class="label">第一</span></div>
-        </div>
-        <div class="speaker-score-bar">
-          <div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar empty"></div>
+          <div class="speaker-status status-pending" id="st0">待评分</div>
         </div>
       </div>
-      <div class="speaker-card" onclick="openScore(1)">
+      <div class="speaker-card" onclick="openJudge(1)">
         <div class="speaker-top">
           <div class="speaker-avatar" style="background:linear-gradient(135deg,#845ec2,#d65db1)">王</div>
           <div class="speaker-info">
-            <div class="speaker-name">王芳</div>
-            <div class="speaker-project">L2P1 · 有效反馈的艺术</div>
+            <div class="speaker-name">王芳</div><div class="speaker-project">L2P1 · 有效反馈的艺术</div>
           </div>
-          <div class="speaker-rank"><span class="num" style="color:#c0c0c0">🥈</span><span class="label">第二</span></div>
-        </div>
-        <div class="speaker-score-bar">
-          <div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar empty"></div><div class="s-bar empty"></div>
+          <div class="speaker-status status-pending" id="st1">待评分</div>
         </div>
       </div>
-      <div class="speaker-card" onclick="openScore(2)">
+      <div class="speaker-card" onclick="openJudge(2)">
         <div class="speaker-top">
           <div class="speaker-avatar" style="background:linear-gradient(135deg,#00b4d8,#0077b6)">李</div>
           <div class="speaker-info">
-            <div class="speaker-name">李伟</div>
-            <div class="speaker-project">L3P1 · 用故事打动人</div>
+            <div class="speaker-name">李伟</div><div class="speaker-project">L3P1 · 用故事打动人</div>
           </div>
-          <div class="speaker-rank"><span class="num" style="color:#cd7f32">🥉</span><span class="label">第三</span></div>
-        </div>
-        <div class="speaker-score-bar">
-          <div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar empty"></div><div class="s-bar empty"></div><div class="s-bar empty"></div>
+          <div class="speaker-status status-pending" id="st2">待评分</div>
         </div>
       </div>
-      <div class="speaker-card" onclick="openScore(3)">
+      <div class="speaker-card" onclick="openJudge(3)">
         <div class="speaker-top">
           <div class="speaker-avatar" style="background:linear-gradient(135deg,#f9a825,#ff8f00)">陈</div>
           <div class="speaker-info">
-            <div class="speaker-name">陈静</div>
-            <div class="speaker-project">L1P1 · 破冰演讲</div>
+            <div class="speaker-name">陈静</div><div class="speaker-project">L1P1 · 破冰演讲</div>
           </div>
-          <div class="speaker-rank"><span class="num" style="color:rgba(255,255,255,.3)">4</span><span class="label">第四</span></div>
-        </div>
-        <div class="speaker-score-bar">
-          <div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar empty"></div><div class="s-bar empty"></div><div class="s-bar empty"></div><div class="s-bar empty"></div>
-        </div>
-      </div>
-      <div class="speaker-card" onclick="openScore(4)">
-        <div class="speaker-top">
-          <div class="speaker-avatar" style="background:linear-gradient(135deg,#00c853,#00e676)">赵</div>
-          <div class="speaker-info">
-            <div class="speaker-name">赵雪</div>
-            <div class="speaker-project">L2P2 · 条理分明</div>
-          </div>
-          <div class="speaker-rank"><span class="num" style="color:rgba(255,255,255,.3)">5</span><span class="label">第五</span></div>
-        </div>
-        <div class="speaker-score-bar">
-          <div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar filled"></div><div class="s-bar empty"></div><div class="s-bar empty"></div><div class="s-bar empty"></div><div class="s-bar empty"></div><div class="s-bar empty"></div>
+          <div class="speaker-status status-pending" id="st3">待评分</div>
         </div>
       </div>
     </div>
 
-    <!-- Score page -->
-    <div class="page" id="page-score">
-      <div class="score-card">
-        <div class="score-speaker">
-          <div class="avatar" id="scoreAvatar" style="background:linear-gradient(135deg,#e94560,#ff6b6b)">张</div>
-          <div class="info">
-            <h3 id="scoreName">张明</h3>
-            <p id="scoreProject">L1P2 · 我的第一份工作</p>
+    <!-- Judge page -->
+    <div class="page" id="page-judge">
+      <div class="judge-panel">
+        <div class="judge-header">
+          <div class="judge-role-icon" id="jRoleIcon">⏱</div>
+          <div class="judge-role-info">
+            <div class="judge-role-title" id="jRoleTitle">计时官评分</div>
+            <div class="judge-role-desc" id="jRoleDesc">为 <strong style="color:#fff" id="jSpeakerName">张明</strong> 评分</div>
           </div>
         </div>
-
-        <div class="dimension-group">
-          <div class="dim-label"><span>🎯 内容 Content</span><span class="weight">权重 50%</span></div>
-          <input type="range" class="dim-slider" min="1" max="10" value="8" id="dim1" oninput="calcTotal()">
-          <div class="dim-value" id="dim1v">8.0</div>
+        <div id="judge-timer">
+          <div style="font-size:13px;color:rgba(255,255,255,.45);margin-bottom:10px;text-align:center">该演讲的时间控制情况</div>
+          <div class="timer-options">
+            <div class="timer-opt green" onclick="setTimer('green')"><div class="icon">🟢</div><div class="label">绿区</div><div class="sub">4:30 - 5:30 ✅</div></div>
+            <div class="timer-opt yellow" onclick="setTimer('yellow')"><div class="icon">🟡</div><div class="label">黄区</div><div class="sub">5:30 - 6:00 ⚠️</div></div>
+            <div class="timer-opt red" onclick="setTimer('red')"><div class="icon">🔴</div><div class="label">红区</div><div class="sub">超时 &gt;6:00 ❌</div></div>
+          </div>
         </div>
-        <div class="dimension-group">
-          <div class="dim-label"><span>🎤 表达 Delivery</span><span class="weight">权重 30%</span></div>
-          <input type="range" class="dim-slider" min="1" max="10" value="7" id="dim2" oninput="calcTotal()">
-          <div class="dim-value" id="dim2v">7.0</div>
+        <div id="judge-ah" style="display:none">
+          <div class="ah-display">
+            <div class="ah-input" id="ahCount">3</div>
+            <div class="ah-label">坠词使用次数（嗯、啊、那个、就是说）</div>
+          </div>
+          <div class="ah-buttons">
+            <button class="ah-btn minus" onclick="adjAh(-1)">−</button>
+            <button class="ah-btn plus" onclick="adjAh(1)">+</button>
+          </div>
         </div>
-        <div class="dimension-group">
-          <div class="dim-label"><span>📝 语言 Language</span><span class="weight">权重 20%</span></div>
-          <input type="range" class="dim-slider" min="1" max="10" value="8" id="dim3" oninput="calcTotal()">
-          <div class="dim-value" id="dim3v">8.0</div>
+        <div id="judge-grammar" style="display:none">
+          <div style="font-size:13px;color:rgba(255,255,255,.45);margin-bottom:10px;text-align:center">语言语法综合评分</div>
+          <div class="grammar-stars">
+            <div class="g-star" onclick="setGrammar(1)">1</div>
+            <div class="g-star" onclick="setGrammar(2)">2</div>
+            <div class="g-star" onclick="setGrammar(3)">3</div>
+            <div class="g-star" onclick="setGrammar(4)">4</div>
+            <div class="g-star active" onclick="setGrammar(5)">5</div>
+          </div>
+          <textarea class="grammar-input" placeholder="记录优秀的表达或语法问题（选填）" id="grammarNote"></textarea>
         </div>
-
-        <div class="score-total">
-          <div class="score-total-label">加权总分</div>
-          <div class="score-total-num" id="totalScore">7.8</div>
-          <div class="score-total-bar"><div class="score-total-fill" id="totalFill" style="width:78%"></div></div>
-        </div>
-
-        <button class="submit-score-btn" onclick="submitScore()">📨 提交评分</button>
+        <button class="submit-btn" onclick="submitJudge()">📨 提交评分</button>
       </div>
     </div>
 
-    <!-- Rankings page -->
+    <!-- Rankings -->
     <div class="page" id="page-rank">
       <div class="meeting-card">
-        <div class="meeting-date">LIVE RANKING</div>
-        <div class="meeting-title">🏆 实时排名</div>
-        <div class="meeting-sub">共 18 人已投票 · 实时更新</div>
-        <div class="meeting-stats">
-          <div class="meeting-stat"><div class="meeting-stat-num">🥇</div><div class="meeting-stat-label">张明 9.2</div></div>
-          <div class="meeting-stat"><div class="meeting-stat-num">🥈</div><div class="meeting-stat-label">王芳 8.6</div></div>
-          <div class="meeting-stat"><div class="meeting-stat-num">🥉</div><div class="meeting-stat-label">李伟 8.1</div></div>
-        </div>
+        <div class="meeting-date">FINAL RESULTS</div>
+        <div class="meeting-title">🏆 综合排名</div>
+        <div class="meeting-sub">计时官 · 赘词官 · 语法官 三方综合</div>
       </div>
-      <div class="rank-list">
-        <div class="rank-item">
-          <div class="rank-pos gold">🥇</div>
-          <div class="rank-name">张明 · 我的第一份工作</div>
-          <div class="rank-score">9.2</div>
-        </div>
-        <div class="rank-item">
-          <div class="rank-pos silver">🥈</div>
-          <div class="rank-name">王芳 · 有效反馈的艺术</div>
-          <div class="rank-score">8.6</div>
-        </div>
-        <div class="rank-item">
-          <div class="rank-pos bronze">🥉</div>
-          <div class="rank-name">李伟 · 用故事打动人</div>
-          <div class="rank-score">8.1</div>
-        </div>
-        <div class="rank-item">
-          <div class="rank-pos normal">4</div>
-          <div class="rank-name">陈静 · 破冰演讲</div>
-          <div class="rank-score">7.5</div>
-        </div>
-        <div class="rank-item">
-          <div class="rank-pos normal">5</div>
-          <div class="rank-name">赵雪 · 条理分明</div>
-          <div class="rank-score">6.8</div>
-        </div>
-        <div class="rank-item">
-          <div class="rank-pos normal">6</div>
-          <div class="rank-name">刘洋 · 幽默的力量</div>
-          <div class="rank-score">6.2</div>
-        </div>
+      <div class="rank-item">
+        <div class="rank-pos gold">🥇</div>
+        <div class="rank-name">张明<div class="rank-detail">⏱绿区 · 🔇3个坠词 · 📝5/5</div></div>
+        <div class="rank-score">9.0</div>
+      </div>
+      <div class="rank-item">
+        <div class="rank-pos silver">🥈</div>
+        <div class="rank-name">王芳<div class="rank-detail">⏱绿区 · 🔇5个坠词 · 📝4/5</div></div>
+        <div class="rank-score">8.2</div>
+      </div>
+      <div class="rank-item">
+        <div class="rank-pos bronze">🥉</div>
+        <div class="rank-name">李伟<div class="rank-detail">⏱黄区 · 🔇7个坠词 · 📝4/5</div></div>
+        <div class="rank-score">7.0</div>
+      </div>
+      <div class="rank-item">
+        <div class="rank-pos normal">4</div>
+        <div class="rank-name">陈静<div class="rank-detail">⏱绿区 · 🔇6个坠词 · 📝3/5</div></div>
+        <div class="rank-score">7.2</div>
       </div>
     </div>
   </div>
@@ -281,15 +252,19 @@ body{background:#1a1a2e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
     </div>
   </div>
 </div>
+
 <script>
-let scores={0:{dim1:8,dim2:7,dim3:8},1:{dim1:7,dim2:8,dim3:7},2:{dim1:7,dim2:7,dim3:6},3:{dim1:6,dim2:6,dim3:7},4:{dim1:6,dim2:5,dim3:6}};
-let currentSpeaker=0;
-const speakers=[
-  {name:'张明',project:'L1P2 · 我的第一份工作',avatar:'张',color:'linear-gradient(135deg,#e94560,#ff6b6b)'},
-  {name:'王芳',project:'L2P1 · 有效反馈的艺术',avatar:'王',color:'linear-gradient(135deg,#845ec2,#d65db1)'},
-  {name:'李伟',project:'L3P1 · 用故事打动人',avatar:'李',color:'linear-gradient(135deg,#00b4d8,#0077b6)'},
-  {name:'陈静',project:'L1P1 · 破冰演讲',avatar:'陈',color:'linear-gradient(135deg,#f9a825,#ff8f00)'},
-  {name:'赵雪',project:'L2P2 · 条理分明',avatar:'赵',color:'linear-gradient(135deg,#00c853,#00e676)'}
+let currentRole = 'timer';
+let currentSpeaker = 0;
+let timerChoice = null;
+let ahCount = 3;
+let grammarScore = 5;
+let grammarNote = '';
+const speakers = [
+  {name:'张明',project:'L1P2 · 我的第一份工作',color:'linear-gradient(135deg,#e94560,#ff6b6b)',avatar:'张'},
+  {name:'王芳',project:'L2P1 · 有效反馈的艺术',color:'linear-gradient(135deg,#845ec2,#d65db1)',avatar:'王'},
+  {name:'李伟',project:'L3P1 · 用故事打动人',color:'linear-gradient(135deg,#00b4d8,#0077b6)',avatar:'李'},
+  {name:'陈静',project:'L1P1 · 破冰演讲',color:'linear-gradient(135deg,#f9a825,#ff8f00)',avatar:'陈'}
 ];
 
 function showToast(msg,duration=1500){
@@ -297,9 +272,15 @@ function showToast(msg,duration=1500){
   setTimeout(()=>t.classList.remove('show'),duration);
 }
 
+function selectRole(role){
+  currentRole=role;
+  document.querySelectorAll('.role-card').forEach(r=>r.classList.remove('active'));
+  document.getElementById('role-'+role).classList.add('active');
+}
+
 function switchTab(idx,el){
   document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active'));el.classList.add('active');
-  const m={0:'page-home',1:'page-score',2:'page-rank'};
+  const m={0:'page-home',1:'page-judge',2:'page-rank'};
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(m[idx]).classList.add('active');
   document.getElementById('backBtn').classList.remove('show');
@@ -312,44 +293,57 @@ function goHome(){
   document.querySelectorAll('.tab-item').forEach((t,i)=>t.classList.toggle('active',i===0));
 }
 
-function openScore(idx){
+function openJudge(idx){
   currentSpeaker=idx;
   const s=speakers[idx];
-  document.getElementById('scoreAvatar').textContent=s.avatar;
-  document.getElementById('scoreAvatar').style.background=s.color;
-  document.getElementById('scoreName').textContent=s.name;
-  document.getElementById('scoreProject').textContent=s.project;
-  const sv=scores[idx]||{dim1:7,dim2:7,dim3:7};
-  document.getElementById('dim1').value=sv.dim1;
-  document.getElementById('dim2').value=sv.dim2;
-  document.getElementById('dim3').value=sv.dim3;
-  document.getElementById('dim1v').textContent=sv.dim1+'.0';
-  document.getElementById('dim2v').textContent=sv.dim2+'.0';
-  document.getElementById('dim3v').textContent=sv.dim3+'.0';
-  calcTotal();
+  document.getElementById('jSpeakerName').textContent=s.name;
+  const titles={timer:'计时官评分',ah:'赘词官评分',grammar:'语法官评分'};
+  const icons={timer:'⏱',ah:'🔇',grammar:'📝'};
+  document.getElementById('jRoleTitle').textContent=titles[currentRole];
+  document.getElementById('jRoleIcon').textContent=icons[currentRole];
+  document.getElementById('judge-timer').style.display=currentRole==='timer'?'block':'none';
+  document.getElementById('judge-ah').style.display=currentRole==='ah'?'block':'none';
+  document.getElementById('judge-grammar').style.display=currentRole==='grammar'?'block':'none';
+  timerChoice=null;
+  document.querySelectorAll('.timer-opt').forEach(t=>t.classList.remove('active'));
+  ahCount=3; document.getElementById('ahCount').textContent='3';
+  grammarScore=5; updateGrammarUI();
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-score').classList.add('active');
+  document.getElementById('page-judge').classList.add('active');
   document.getElementById('backBtn').classList.add('show');
 }
 
-function calcTotal(){
-  const d1=parseFloat(document.getElementById('dim1').value);
-  const d2=parseFloat(document.getElementById('dim2').value);
-  const d3=parseFloat(document.getElementById('dim3').value);
-  document.getElementById('dim1v').textContent=d1+'.0';
-  document.getElementById('dim2v').textContent=d2+'.0';
-  document.getElementById('dim3v').textContent=d3+'.0';
-  const total=d1*0.5+d2*0.3+d3*0.2;
-  document.getElementById('totalScore').textContent=total.toFixed(1);
-  document.getElementById('totalFill').style.width=(total*10)+'%';
+function setTimer(val){
+  timerChoice=val;
+  document.querySelectorAll('.timer-opt').forEach(t=>t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
 }
 
-function submitScore(){
-  const d1=parseFloat(document.getElementById('dim1').value);
-  const d2=parseFloat(document.getElementById('dim2').value);
-  const d3=parseFloat(document.getElementById('dim3').value);
-  scores[currentSpeaker]={dim1:d1,dim2:d2,dim3:d3};
-  showToast(`✅ 已为 ${speakers[currentSpeaker].name} 打分\n加权总分：${(d1*0.5+d2*0.3+d3*0.2).toFixed(1)}`);
+function adjAh(delta){
+  ahCount=Math.max(0,Math.min(99,ahCount+delta));
+  document.getElementById('ahCount').textContent=ahCount;
+}
+
+function setGrammar(val){
+  grammarScore=val; updateGrammarUI();
+}
+
+function updateGrammarUI(){
+  document.querySelectorAll('.g-star').forEach((el,i)=>el.classList.toggle('active',i<grammarScore));
+}
+
+function submitJudge(){
+  const s=speakers[currentSpeaker];
+  let detail='';
+  if(currentRole==='timer'){if(!timerChoice){showToast('⏱ 请选择时间区域');return}
+    const labels={green:'绿区',yellow:'黄区',red:'红区'};
+    detail='⏱'+labels[timerChoice];
+  }else if(currentRole==='ah'){detail='🔇'+ahCount+'个坠词'}
+  else{grammarNote=document.getElementById('grammarNote').value;detail='📝'+grammarScore+'/5'}
+  document.getElementById('st'+currentSpeaker).textContent='已评分';
+  document.getElementById('st'+currentSpeaker).className='speaker-status status-done';
+  showToast(`✅ 已为 ${s.name} 评分\n${detail}`);
+  setTimeout(goHome,1500);
 }
 </script>
 </body>
