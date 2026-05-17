@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>小书虫 · 读书打卡</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f0f6ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:grid;place-items:center;min-height:100vh;padding:10px}
+.phone{width:375px;height:812px;background:#fff;border-radius:40px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.15);position:relative;display:flex;flex-direction:column}
+.status-bar{height:44px;background:#4facfe;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
+.header{height:44px;background:linear-gradient(135deg,#4facfe,#00f2fe);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:600;position:relative;flex-shrink:0}
+.header .back{position:absolute;left:12px;font-size:20px;cursor:pointer;display:none;color:#fff}
+.header .back.show{display:block}
+.pages{flex:1;position:relative;overflow:hidden}
+.page{position:absolute;inset:0;overflow-y:auto;padding:12px 16px;display:none;-webkit-overflow-scrolling:touch}
+.page.active{display:block}
+
+/* Home - kid dashboard */
+.dashboard{background:linear-gradient(135deg,#4facfe,#00f2fe);border-radius:16px;padding:20px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden}
+.dashboard::before{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.1)}
+.dashboard::after{content:'📚';position:absolute;bottom:10px;right:16px;font-size:36px;opacity:.5}
+.dash-emoji{font-size:36px;margin-bottom:6px}
+.dash-name{font-size:18px;font-weight:700;margin-bottom:2px}
+.dash-class{font-size:13px;opacity:.8;margin-bottom:12px}
+.dash-stats{display:flex;gap:0;background:rgba(255,255,255,.15);border-radius:12px;padding:12px;backdrop-filter:blur(10px)}
+.dash-stat{flex:1;text-align:center}
+.dash-stat-num{font-size:24px;font-weight:900;line-height:1.1}
+.dash-stat-label{font-size:11px;opacity:.8;margin-top:2px}
+
+/* Streak bar */
+.streak-section{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;border:1px solid #e8f0fe}
+.streak-title{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.streak-days{display:flex;gap:6px;justify-content:space-between}
+.streak-day{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700}
+.streak-day.done{background:#4facfe;color:#fff}
+.streak-day.today{background:#ffd60a;color:#333;box-shadow:0 0 0 3px rgba(255,214,10,.3)}
+.streak-day.empty{background:#f0f0f0;color:#ccc}
+.streak-day .emoji{font-size:16px}
+
+/* Badges */
+.badge-section{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;border:1px solid #e8f0fe}
+.badge-title{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.badge-grid{display:flex;gap:10px;flex-wrap:wrap}
+.badge-item{width:60px;text-align:center}
+.badge-icon{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;margin:0 auto 4px;font-size:22px}
+.badge-icon.earned{background:linear-gradient(135deg,#ffd60a,#ff9500);box-shadow:0 2px 8px rgba(255,214,10,.4);color:#fff}
+.badge-icon.locked{background:#f0f0f0;color:#ccc;font-size:18px}
+.badge-name{font-size:10px;color:#666;line-height:1.2}
+
+/* Check-in form */
+.checkin-card{background:#fff;border-radius:14px;padding:16px;border:1px solid #e8f0fe;margin-bottom:14px}
+.checkin-title{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.form-group{margin-bottom:12px}
+.form-label{font-size:13px;font-weight:600;color:#555;margin-bottom:4px}
+.form-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-size:14px;outline:0}
+.form-input:focus{border-color:#4facfe}
+.form-textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-size:14px;outline:0;resize:none;font-family:inherit;min-height:60px}
+.form-textarea:focus{border-color:#4facfe}
+.photo-upload{width:100%;height:100px;border:2px dashed #ddd;border-radius:12px;display:grid;place-items:center;color:#999;font-size:13px;cursor:pointer}
+.photo-upload:active{background:#f9f9f9}
+.photo-upload .icon{font-size:28px;margin-bottom:4px}
+.checkin-btn{width:100%;padding:12px;border-radius:25px;background:linear-gradient(135deg,#4facfe,#00f2fe);color:#fff;border:0;font-size:15px;font-weight:700;cursor:pointer}
+.checkin-btn:active{opacity:.9}
+
+/* History */
+.history-list{}
+.history-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f0f0f0}
+.history-item:last-child{border-bottom:0}
+.history-thumb{width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);display:grid;place-items:center;font-size:24px;flex-shrink:0}
+.history-info{flex:1}
+.history-book{font-size:14px;font-weight:600;margin-bottom:2px}
+.history-detail{font-size:12px;color:#999;margin-bottom:2px}
+.history-note{font-size:12px;color:#666;line-height:1.4}
+.history-points{color:#ff9500;font-weight:700;font-size:13px;flex-shrink:0}
+
+/* Points animation */
+.toast{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);z-index:100;display:none;text-align:center}
+.toast.show{display:block}
+.points-pop{background:linear-gradient(135deg,#ffd60a,#ff9500);color:#fff;padding:20px 32px;border-radius:20px;font-size:20px;font-weight:900;box-shadow:0 8px 30px rgba(255,214,10,.4);animation:popIn .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* TabBar */
+.tabbar{height:64px;background:#fff;display:flex;border-top:1px solid #eee;flex-shrink:0;padding-bottom:8px}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:#999;cursor:pointer;gap:2px}
+.tab-item .icon{font-size:20px}
+.tab-item.active{color:#4facfe}
+
+.page::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+<div class="phone" id="app">
+  <div class="status-bar"><span style="font-weight:700">12:30</span><span>📶 🔋</span></div>
+  <div class="header">
+    <span class="back" id="backBtn" onclick="goHome()">‹</span>
+    小书虫 📚
+  </div>
+  <div class="toast" id="toast"><div class="points-pop" id="pointsPop">+10 🎉</div></div>
+  <div class="pages">
+    <!-- Home: kid dashboard -->
+    <div class="page active" id="page-home">
+      <div class="dashboard">
+        <div class="dash-emoji">🐛</div>
+        <div class="dash-name">小明</div>
+        <div class="dash-class">三年级2班</div>
+        <div class="dash-stats">
+          <div class="dash-stat"><div class="dash-stat-num">7</div><div class="dash-stat-label">连续打卡</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">23</div><div class="dash-stat-label">总天数</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">320</div><div class="dash-stat-label">总积分</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">12</div><div class="dash-stat-label">本书</div></div>
+        </div>
+      </div>
+
+      <!-- Streak -->
+      <div class="streak-section">
+        <div class="streak-title">🔥 本周打卡</div>
+        <div class="streak-days">
+          <div class="streak-day done">✅</div>
+          <div class="streak-day done">✅</div>
+          <div class="streak-day done">✅</div>
+          <div class="streak-day done">✅</div>
+          <div class="streak-day done">✅</div>
+          <div class="streak-day done">✅</div>
+          <div class="streak-day today">🤩</div>
+        </div>
+      </div>
+
+      <!-- Badges -->
+      <div class="badge-section">
+        <div class="badge-title">🏆 成就勋章</div>
+        <div class="badge-grid">
+          <div class="badge-item"><div class="badge-icon earned">🎉</div><div class="badge-name">首次打卡</div></div>
+          <div class="badge-item"><div class="badge-icon earned">🔥</div><div class="badge-name">连续3天</div></div>
+          <div class="badge-item"><div class="badge-icon earned">💪</div><div class="badge-name">连续7天</div></div>
+          <div class="badge-item"><div class="badge-icon earned">📖</div><div class="badge-name">读完10本</div></div>
+          <div class="badge-item"><div class="badge-icon locked">🔒</div><div class="badge-name">连续14天</div></div>
+          <div class="badge-item"><div class="badge-icon locked">🔒</div><div class="badge-name">小书虫</div></div>
+        </div>
+      </div>
+
+      <!-- Quick check in button -->
+      <div class="checkin-card">
+        <div class="checkin-title">📝 今日打卡</div>
+        <div style="background:#f0f8ff;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+          <div style="font-size:24px">📖</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600">小王子</div>
+            <div style="font-size:12px;color:#999">已读 45 页</div>
+          </div>
+          <div style="background:#4facfe;color:#fff;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">进行中</div>
+        </div>
+        <button class="checkin-btn" onclick="switchTab(1,document.querySelectorAll('.tab-item')[1])">今天读书了吗？去打卡</button>
+      </div>
+
+      <!-- Recent history -->
+      <div class="streak-section" style="border:0;padding:0">
+        <div class="streak-title" style="margin-bottom:8px">📋 最近打卡</div>
+        <div class="history-list">
+          <div class="history-item">
+            <div class="history-thumb">📘</div>
+            <div class="history-info">
+              <div class="history-book">小王子</div>
+              <div class="history-detail">p.35-p.45 · 昨天 19:30</div>
+              <div class="history-note">"狐狸说，重要的东西用眼睛是看不见的"</div>
+            </div>
+            <div class="history-points">+10</div>
+          </div>
+          <div class="history-item">
+            <div class="history-thumb">📕</div>
+            <div class="history-info">
+              <div class="history-book">夏洛的网</div>
+              <div class="history-detail">p.50-p.68 · 前天 20:00</div>
+              <div class="history-note">"威尔伯不想死，夏洛说要帮他"</div>
+            </div>
+            <div class="history-points">+10</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Check-in page -->
+    <div class="page" id="page-checkin">
+      <div class="checkin-card">
+        <div class="checkin-title">📝 记录今天读了什么</div>
+        <div class="form-group">
+          <div class="form-label">📚 书名</div>
+          <input class="form-input" type="text" placeholder="如：小王子" value="小王子" id="bookName">
+        </div>
+        <div class="form-group">
+          <div class="form-label">📄 读了哪几页</div>
+          <input class="form-input" type="text" placeholder="如：p.45-p.55" id="bookPages">
+        </div>
+        <div class="form-group">
+          <div class="form-label">💬 孩子的话/感想（选填）</div>
+          <textarea class="form-textarea" placeholder="今天读到了什么有趣的内容？" id="bookNote">"重要的东西用眼睛是看不见的"</textarea>
+        </div>
+        <div class="form-group">
+          <div class="form-label">📸 拍下今天读的书（选填）</div>
+          <div class="photo-upload" onclick="showToast('📸 拍照功能（模拟）')">
+            <div><div class="icon">📷</div>点击拍照或从相册选择</div>
+          </div>
+        </div>
+        <button class="checkin-btn" onclick="doCheckin()">✅ 打卡成功 +10 积分</button>
+      </div>
+    </div>
+
+    <!-- Achievements page -->
+    <div class="page" id="page-achievements">
+      <div style="background:linear-gradient(135deg,#4facfe,#00f2fe);border-radius:14px;padding:18px;color:#fff;text-align:center;margin-bottom:14px">
+        <div style="font-size:36px;margin-bottom:6px">🏆</div>
+        <div style="font-size:22px;font-weight:900">320 积分</div>
+        <div style="font-size:13px;opacity:.8;margin-top:4px">再读 2 天可获得「连续14天」勋章</div>
+        <div style="width:100%;height:6px;background:rgba(255,255,255,.2);border-radius:3px;margin-top:10px">
+          <div style="width:70%;height:100%;background:#ffd60a;border-radius:3px"></div>
+        </div>
+      </div>
+      <div class="badge-section" style="border:1px solid #e8f0fe">
+        <div class="badge-title">🏅 已获得</div>
+        <div class="badge-grid">
+          <div class="badge-item"><div class="badge-icon earned">🎉</div><div class="badge-name">首次打卡</div></div>
+          <div class="badge-item"><div class="badge-icon earned">🔥</div><div class="badge-name">连续3天</div></div>
+          <div class="badge-item"><div class="badge-icon earned">💪</div><div class="badge-name">连续7天</div></div>
+          <div class="badge-item"><div class="badge-icon earned">📖</div><div class="badge-name">读完10本</div></div>
+        </div>
+      </div>
+      <div class="badge-section" style="border:1px solid #e8f0fe">
+        <div class="badge-title">🔒 待解锁</div>
+        <div class="badge-grid">
+          <div class="badge-item"><div class="badge-icon locked">🔒</div><div class="badge-name">连续14天</div></div>
+          <div class="badge-item"><div class="badge-icon locked">🔒</div><div class="badge-name">小书虫</div></div>
+          <div class="badge-item"><div class="badge-icon locked">🔒</div><div class="badge-name">阅读达人</div></div>
+          <div class="badge-item"><div class="badge-icon locked">🔒</div><div class="badge-name">故事大王</div></div>
+          <div class="badge-item"><div class="badge-icon locked">🔒</div><div class="badge-name">百本挑战</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab-item active" onclick="switchTab(0,this)">
+      <span class="icon">🏠</span><span>首页</span>
+    </div>
+    <div class="tab-item" onclick="switchTab(1,this)">
+      <span class="icon">📝</span><span>打卡</span>
+    </div>
+    <div class="tab-item" onclick="switchTab(2,this)">
+      <span class="icon">🏆</span><span>成就</span>
+    </div>
+    <div class="tab-item" onclick="switchTab(3,this)">
+      <span class="icon">👤</span><span>我的</span>
+    </div>
+  </div>
+</div>
+<script>
+function showToast(msg,duration=1500){
+  const t=document.getElementById('toast');
+  document.getElementById('pointsPop').textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),duration);
+}
+function switchTab(idx,el){
+  document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const m={0:'page-home',1:'page-checkin',2:'page-achievements',3:'page-home'};
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(m[idx]).classList.add('active');
+  document.getElementById('backBtn').classList.remove('show');
+}
+function goHome(){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-home').classList.add('active');
+  document.getElementById('backBtn').classList.remove('show');
+  document.querySelectorAll('.tab-item').forEach((t,i)=>t.classList.toggle('active',i===0));
+}
+function doCheckin(){
+  showToast('🎉 +10 积分！连续第8天');
+  setTimeout(()=>{
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-home').classList.add('active');
+    document.querySelectorAll('.tab-item').forEach((t,i)=>t.classList.toggle('active',i===0));
+    document.getElementById('backBtn').classList.remove('show');
+  },2000);
+}
+</script>
+</body>
+</html>
